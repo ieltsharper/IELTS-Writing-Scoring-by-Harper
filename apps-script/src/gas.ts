@@ -1,5 +1,6 @@
 // Apps Script entry points and the real Google service adapters.
 // Everything else in the back end is plain TypeScript that receives `Services`.
+import { callApi } from './api';
 import { runSetup } from './setup';
 import type { DriveService, MailService, ScriptProps, Services, StoredFile } from './services';
 
@@ -107,8 +108,22 @@ export function doGet() {
   return json({ ok: true, data: { service: 'ielts-writing' } });
 }
 
-export function doPost() {
-  return doGet();
+/**
+ * The JSON API. The front end posts `Content-Type: text/plain` with a JSON
+ * body, which avoids a CORS preflight.
+ */
+export function doPost(e: GoogleAppsScript.Events.DoPost) {
+  let svc: Services;
+  try {
+    svc = realServices();
+  } catch (err) {
+    console.error(err);
+    return json({
+      ok: false,
+      error: { code: 'server_error', message: 'The server is not configured yet.' },
+    });
+  }
+  return json(callApi(svc, e?.postData?.contents ?? ''));
 }
 
 /** Run once from the Apps Script editor. */
