@@ -2,6 +2,7 @@
 import { accountActions } from './handlers/account';
 import { adminActions } from './handlers/admin';
 import { claudeSetupActions } from './handlers/claudeSetup';
+import { dashboardActions } from './handlers/dashboard';
 import { listActions } from './handlers/lists';
 import { scoringActions } from './handlers/scoring';
 import { assignmentActions } from './handlers/assignments';
@@ -21,6 +22,7 @@ function ensureRegistered(): void {
   registerActions(listActions);
   registerActions(claudeSetupActions);
   registerActions(scoringActions);
+  registerActions(dashboardActions);
 }
 
 export function callApi(svc: Services, rawBody: string): ApiResponse {
