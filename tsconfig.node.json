@@ -12,5 +12,12 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["mock-server", "tests", "vite.config.ts", "vitest.config.ts", "playwright.config.ts"]
+  "include": [
+    "mock-server",
+    "tests",
+    "apps-script/testing",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts"
+  ]
 }
