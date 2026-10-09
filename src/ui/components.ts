@@ -161,9 +161,12 @@ export function confirmDialog(opts: {
         ),
       ),
     );
+    const returnFocus = document.activeElement as HTMLElement | null;
     const close = (value: boolean) => {
       dialog.close();
       dialog.remove();
+      // Give focus back to the control that opened the dialog.
+      if (returnFocus?.isConnected) returnFocus.focus();
       resolve(value);
     };
     dialog.addEventListener('cancel', (e) => {

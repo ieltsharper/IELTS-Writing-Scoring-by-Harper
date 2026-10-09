@@ -18,6 +18,7 @@ import {
   type DashboardStats,
   filterBar,
   highlightsSection,
+  rewriteImprovementsSection,
   topErrorsSection,
 } from '../statsWidgets';
 import { statusBadge } from '../student/essays';
@@ -128,6 +129,7 @@ export function studentOverviewPage(ctx: RouteContext): Node {
           navigate(`/admin/students/${o.student.id}${q.toString() ? `?${q}` : ''}`);
         }),
         highlightsSection(o.stats.highlights),
+        rewriteImprovementsSection(o.stats.rewriteImprovements, (id) => `/admin/score/${id}`),
         h(
           'section',
           { class: 'card' },

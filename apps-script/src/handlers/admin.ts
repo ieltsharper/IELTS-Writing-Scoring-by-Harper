@@ -5,6 +5,7 @@ import { CRITERIA, LIMITS, TASK_TYPES } from '../../../shared/constants';
 import { calibrationFor } from '../calibration';
 import { ApiError, bool, type Ctx, type EssayRow, num, parseJson, topicLabel } from '../context';
 import { clearDashboardCache } from '../dashboardCache';
+import { MAX_CELL } from '../db';
 import { archiveEssay } from '../drive';
 import type { ActionDef } from '../router';
 import type { Row } from '../schema';
@@ -236,12 +237,14 @@ function saveClaudeDraft(ctx: Ctx, payload: unknown) {
       rawText: parsed.errors.join(' '),
     });
   }
+  const parsedJson = JSON.stringify(parsed.value);
   const draft = ctx.db.insert('Drafts', {
     id: ctx.svc.uuid(),
     essay_id: essay.id,
     kind: 'initial',
     raw_text: rawText,
-    parsed_json: JSON.stringify(parsed.value),
+    // The raw reply can always be parsed again, so drop the parsed copy if it would not fit a cell.
+    parsed_json: parsedJson.length < MAX_CELL ? parsedJson : '',
     created_at: ctx.nowIso,
   });
   return { id: draft.id, createdAt: draft.created_at };

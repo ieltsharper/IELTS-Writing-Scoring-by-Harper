@@ -70,20 +70,32 @@ export function claudeSetupPage(): Node {
           ),
           h('h2', null, 'Project instructions'),
           copyBtn,
-          h('pre', { class: 'plain-text card' }, data.instructions),
+          h(
+            'pre',
+            { class: 'plain-text card', tabindex: '0', 'aria-label': 'Project instructions' },
+            data.instructions,
+          ),
           h('h2', null, 'Project files'),
           h('div', { class: 'actions' }, catBtn, sampleBtn),
           h(
             'details',
             { class: 'card' },
             h('summary', null, 'Preview error categories'),
-            h('pre', { class: 'plain-text' }, data.categories),
+            h(
+              'pre',
+              { class: 'plain-text', tabindex: '0', 'aria-label': 'Error categories' },
+              data.categories,
+            ),
           ),
           h(
             'details',
             { class: 'card' },
             h('summary', null, 'Preview calibration samples'),
-            h('pre', { class: 'plain-text' }, data.samples),
+            h(
+              'pre',
+              { class: 'plain-text', tabindex: '0', 'aria-label': 'Calibration samples' },
+              data.samples,
+            ),
           ),
         ];
       },

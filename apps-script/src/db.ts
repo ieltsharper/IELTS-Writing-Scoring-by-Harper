@@ -13,8 +13,14 @@ const FORMULA_PREFIX = /^[=+\-@]/;
 export function toCell(value: unknown): string {
   if (value === null || value === undefined) return '';
   const text = typeof value === 'string' ? value : String(value);
-  return FORMULA_PREFIX.test(text) ? `'${text}` : text;
+  const safe = FORMULA_PREFIX.test(text) ? `'${text}` : text;
+  // Requests are validated well below this; this guards against a silent Sheets failure.
+  if (safe.length > MAX_CELL) throw new Error('Value is too long for a Sheet cell');
+  return safe;
 }
+
+/** Google Sheets limit per cell. */
+export const MAX_CELL = 50000;
 
 /** Convert a cell value read from Sheets back to the stored text. */
 export function fromCell(value: unknown): string {

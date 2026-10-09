@@ -39,7 +39,7 @@ interface Window {
 }
 
 /** Fixed one-hour windows in CacheService. Returns false when the limit is reached. */
-function takeRate(ctx: Ctx, key: string, limit: number): boolean {
+export function takeRate(ctx: Ctx, key: string, limit: number): boolean {
   const nowMs = ctx.now.getTime();
   const raw = ctx.svc.cache.get(key);
   let w: Window = raw ? (JSON.parse(raw) as Window) : { count: 0, resetAt: nowMs + 3600000 };

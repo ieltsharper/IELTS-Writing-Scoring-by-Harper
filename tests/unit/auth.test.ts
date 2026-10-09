@@ -80,6 +80,21 @@ describe('login links and sessions', () => {
     expect(app.svc.mail.outbox.filter((m) => m.to === 'demo.binh@example.com')).toHaveLength(0);
   });
 
+  it('limits new sign-ups per hour without revealing it', () => {
+    const app = createTestApp();
+    const classId = app.call('config.get').classes[0].id;
+    for (let i = 0; i < 35; i++) {
+      const res = app.call('auth.signup', {
+        name: `User ${i}`,
+        email: `u${i}@example.com`,
+        classId,
+        consent: true,
+      });
+      expect(res.message).toMatch(/If that email is registered/);
+    }
+    expect(app.db().find('Users', (u) => u.email.startsWith('u'))).toHaveLength(30);
+  });
+
   it('logout ends the session', () => {
     const app = createTestApp();
     const token = app.login('demo.an@example.com');

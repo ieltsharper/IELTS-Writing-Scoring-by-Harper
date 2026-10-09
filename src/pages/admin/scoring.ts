@@ -14,6 +14,7 @@ import {
   type Criterion,
   CRITERION_SHORT,
 } from '../../../shared/constants';
+import { findExcerpt } from '../../../shared/excerpt';
 import { countWords } from '../../../shared/wordCount';
 import { api, ApiClientError } from '../../api';
 import { type Child, h, replace } from '../../dom';
@@ -195,7 +196,6 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
       selectionInfo.textContent = selection
         ? `Selected: “${selection.text.slice(0, 120)}” (characters ${selection.start}–${selection.end})`
         : 'Select text in the essay to tag an error.';
-      addBtn.disabled = !selection;
       errorsBox
         .querySelectorAll<HTMLButtonElement>('[data-place]')
         .forEach((b) => (b.disabled = !selection));
@@ -355,9 +355,28 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
   const newCat = categoryOptions(data.categories, null);
   const newCorrection = h('input', { name: 'newCorrection', maxlength: '1000' });
   const newNote = h('input', { name: 'newNote', maxlength: '1000' });
-  const addBtn = h('button', { type: 'button', class: 'btn', disabled: true }, 'Tag selected text');
+  // Keyboard alternative to selecting with the mouse: type the exact text instead.
+  const typedExcerpt = h('input', { name: 'typedExcerpt', maxlength: '1000' });
+  const addBtn = h('button', { type: 'button', class: 'btn' }, 'Tag selected text');
   addBtn.addEventListener('click', () => {
-    if (!selection) return;
+    let target = selection;
+    if (!target && typedExcerpt.value.trim()) {
+      const span = findExcerpt(
+        essay.body,
+        typedExcerpt.value,
+        state.errors.filter((e) => e.start !== null).map((e) => ({ start: e.start!, end: e.end! })),
+      );
+      if (!span) {
+        typedExcerpt.focus();
+        toast('That text was not found exactly in the essay.', 'error');
+        return;
+      }
+      target = { ...span, text: essay.body.slice(span.start, span.end) };
+    }
+    if (!target) {
+      toast('Select text in the essay, or type the exact text to tag.', 'error');
+      return;
+    }
     if (!newCat.value) {
       newCat.focus();
       toast('Choose a category for the error.', 'error');
@@ -366,20 +385,20 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
     state.errors.push({
       key: newKey(),
       categoryId: newCat.value,
-      excerpt: selection.text,
-      start: selection.start,
-      end: selection.end,
+      excerpt: target.text,
+      start: target.start,
+      end: target.end,
       correction: newCorrection.value,
       note: newNote.value,
     });
     newCorrection.value = '';
     newNote.value = '';
+    typedExcerpt.value = '';
     selection = null;
     window.getSelection()?.removeAllRanges();
     dirty = true;
     renderErrors();
     renderText();
-    addBtn.disabled = true;
     selectionInfo.textContent = 'Error added. Select more text to tag another.';
   });
   const tagger = h(
@@ -389,8 +408,9 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
     h(
       'p',
       { class: 'hint' },
-      'Select text in the essay, choose a category, type the correction and press “Tag selected text”.',
+      'Select text in the essay (or type it exactly below), choose a category, type the correction and press “Tag selected text”.',
     ),
+    field({ label: 'Or type the exact text from the essay', control: typedExcerpt }),
     h(
       'div',
       { class: 'grid-2' },
@@ -1025,7 +1045,7 @@ function sourcePanel(
     ]),
   ) as Record<Criterion, HTMLSelectElement>;
   const overall = bandSelect(`${source.id}-overall`, existing?.overall ?? null, 'Not given');
-  const text = h('textarea', { rows: '8', maxlength: '60000' });
+  const text = h('textarea', { rows: '8', maxlength: '20000' });
   text.value = existing?.feedbackText ?? '';
   const status = h('div', { 'aria-live': 'polite' });
   const save = h(
@@ -1098,11 +1118,15 @@ function buildClaudePanel(opts: {
     rows: '10',
     'aria-label': 'Claude reply',
     placeholder: 'Paste Claude’s JSON reply here',
-    maxlength: '60000',
+    maxlength: '20000',
   });
   const result = h('div', { 'aria-live': 'polite' });
   const check = h('button', { type: 'button', class: 'btn btn-primary' }, 'Check reply');
-  const preview = h('pre', { class: 'plain-text card' });
+  const preview = h('pre', {
+    class: 'plain-text card',
+    tabindex: '0',
+    'aria-label': 'Text copied for Claude',
+  });
 
   const showParsed = (draft: ClaudeDraft, savedAt?: string) => {
     const unknown = matchClaudeErrors(
@@ -1183,7 +1207,7 @@ function buildClaudePanel(opts: {
   const reconcileText = h('textarea', {
     rows: '6',
     'aria-label': 'Reconcile notes',
-    maxlength: '60000',
+    maxlength: '20000',
   });
   reconcileText.value = data.reconcile?.rawText ?? '';
   const reconcileStatus = h('div', { 'aria-live': 'polite' });

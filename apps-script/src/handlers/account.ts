@@ -5,8 +5,11 @@ import {
   LOGIN_LINK_MESSAGE,
   logout,
   requestLoginLink,
+  takeRate,
   type AuthUser,
 } from '../auth';
+
+const SIGNUPS_PER_HOUR = 30;
 import { authorize } from '../authorize';
 import { adminTimezone, ApiError, bool, type Ctx, getNumberSetting, num } from '../context';
 import { clearDashboardCache } from '../dashboardCache';
@@ -52,7 +55,8 @@ function signup(ctx: Ctx, payload: unknown) {
   }
   r.done();
   const exists = ctx.db.findOne('Users', (u) => u.email.toLowerCase() === email);
-  if (!exists) {
+  // New accounts are limited per hour so a script cannot flood the Users tab.
+  if (!exists && takeRate(ctx, 'rl:signup', SIGNUPS_PER_HOUR)) {
     ctx.db.insert('Users', {
       id: ctx.svc.uuid(),
       name,

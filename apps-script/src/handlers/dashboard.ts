@@ -7,6 +7,7 @@ import {
   type DashEssay,
   essaysPerWeek,
   progressHighlights,
+  rewriteImprovements,
   topErrorsByCriterion,
   topicsCovered,
 } from '../../../shared/dashboard';
@@ -58,6 +59,7 @@ export function dashEssays(ctx: Ctx, user: AuthUser | null, studentId: string): 
             }))
           : [],
         isRewrite: Boolean(e.parent_essay_id),
+        parentId: e.parent_essay_id || null,
       };
     });
 }
@@ -76,8 +78,11 @@ function stats(
   filters: { taskType?: string; mode?: string },
 ) {
   return cached(ctx, studentId, `stats:${filters.taskType ?? ''}:${filters.mode ?? ''}`, () => {
-    const essays = applyFilters(dashEssays(ctx, user, studentId), filters);
+    const all = dashEssays(ctx, user, studentId);
+    const essays = applyFilters(all, filters);
     return {
+      // A rewrite may use a different mode from its original, so pair them before the mode filter.
+      rewriteImprovements: rewriteImprovements(applyFilters(all, { taskType: filters.taskType })),
       bandOverTime: bandOverTime(essays),
       criterionAverages: criterionAverages(essays),
       topErrors: {

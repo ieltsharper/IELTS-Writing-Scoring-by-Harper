@@ -9,6 +9,14 @@ export function remoteImage(action: string, payload: unknown, alt: string): HTML
   replace(box, loading('Loading image…'));
   api<{ mimeType: string; base64: string }>(action, payload).then(
     (img) => {
+      // Only ever build data: URLs for PNG/JPEG with plain base64 content.
+      if (
+        !['image/png', 'image/jpeg'].includes(img.mimeType) ||
+        !/^[A-Za-z0-9+/=]+$/.test(img.base64)
+      ) {
+        replace(box, errorBox(new Error('The image could not be shown.')));
+        return;
+      }
       const src = `data:${img.mimeType};base64,${img.base64}`;
       replace(
         box,

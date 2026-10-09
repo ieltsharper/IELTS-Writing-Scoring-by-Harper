@@ -5,6 +5,7 @@ import {
   type DashEssay,
   essaysPerWeek,
   progressHighlights,
+  rewriteImprovements,
   topErrorsByCriterion,
   topicsCovered,
 } from '../../shared/dashboard';
@@ -151,6 +152,24 @@ describe('dashboard numbers', () => {
     );
     expect(res.rows).toHaveLength(1);
     expect(res.notAttempted).toEqual(['Crime']);
+  });
+});
+
+describe('rewrite improvements', () => {
+  it('pairs a scored rewrite with its original and computes the change', () => {
+    const orig = essay(1, [], {
+      overall: 5.5,
+      criteria: { task: 6, coherence: 5.5, lexical: 5.5, grammar: 5 },
+    });
+    const rw = essay(5, [], {
+      overall: 6.5,
+      criteria: { task: 6.5, coherence: 6.5, lexical: 6, grammar: 6.5 },
+      isRewrite: true,
+      parentId: orig.id,
+    });
+    const [x] = rewriteImprovements([orig, rw]);
+    expect(x.change).toEqual({ task: 0.5, coherence: 1, lexical: 0.5, grammar: 1.5, overall: 1 });
+    expect(rewriteImprovements([rw])).toEqual([]); // original not available
   });
 });
 

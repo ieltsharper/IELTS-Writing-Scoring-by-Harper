@@ -27,6 +27,7 @@
     "marked": "^18.1.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "^10.0.1",
     "@google/clasp": "^3.4.1",
     "@playwright/test": "^1.64.0",

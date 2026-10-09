@@ -25,6 +25,48 @@ export interface DashEssay {
   criteria: Record<Criterion, number> | null;
   errors: DashError[];
   isRewrite: boolean;
+  /** Original essay ID when this essay is a rewrite. */
+  parentId?: string | null;
+}
+
+export interface RewriteImprovement {
+  originalId: string;
+  rewriteId: string;
+  topic: string;
+  original: Record<Criterion | 'overall', number>;
+  rewrite: Record<Criterion | 'overall', number>;
+  change: Record<Criterion | 'overall', number>;
+}
+
+/** Original → rewrite change per criterion and overall, for scored pairs. */
+export function rewriteImprovements(essays: DashEssay[]): RewriteImprovement[] {
+  const byId = new Map(essays.map((e) => [e.id, e]));
+  const keys = [...CRITERIA, 'overall'] as const;
+  const scores = (e: DashEssay) =>
+    Object.fromEntries(
+      keys.map((k) => [k, k === 'overall' ? e.overall! : e.criteria![k]]),
+    ) as Record<Criterion | 'overall', number>;
+  return essays
+    .filter((e) => e.parentId && e.overall !== null && e.criteria)
+    .map((rw) => ({ rw, orig: byId.get(rw.parentId!) }))
+    .filter((x): x is { rw: DashEssay; orig: DashEssay } =>
+      Boolean(x.orig && x.orig.overall !== null && x.orig.criteria),
+    )
+    .sort((a, b) => b.rw.submittedAt.localeCompare(a.rw.submittedAt))
+    .map(({ rw, orig }) => {
+      const original = scores(orig);
+      const rewrite = scores(rw);
+      return {
+        originalId: orig.id,
+        rewriteId: rw.id,
+        topic: orig.topic,
+        original,
+        rewrite,
+        change: Object.fromEntries(
+          keys.map((k) => [k, Math.round((rewrite[k] - original[k]) * 10) / 10]),
+        ) as Record<Criterion | 'overall', number>,
+      };
+    });
 }
 
 export interface Filters {

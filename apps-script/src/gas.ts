@@ -92,9 +92,14 @@ function realServices(): Services {
         .join(''),
     now: () => new Date(),
     tzOffsetMinutes: (date, timeZone) => {
-      const z = Utilities.formatDate(date, timeZone, 'Z'); // e.g. +0700
-      const sign = z.startsWith('-') ? -1 : 1;
-      return sign * (Number(z.slice(1, 3)) * 60 + Number(z.slice(3, 5)));
+      try {
+        const z = Utilities.formatDate(date, timeZone, 'Z'); // e.g. +0700
+        const sign = z.startsWith('-') ? -1 : 1;
+        const minutes = sign * (Number(z.slice(1, 3)) * 60 + Number(z.slice(3, 5)));
+        return Number.isFinite(minutes) ? minutes : 0;
+      } catch {
+        return 0; // unknown time zone: fall back to UTC
+      }
     },
     log: (message) => console.log(message),
   };

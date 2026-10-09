@@ -45,6 +45,13 @@ const footer = h(
 );
 app.append(header, main, footer);
 
+// The skip link must not change the URL hash (the hash is the router's path).
+document.querySelector('.skip-link')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  main.focus();
+  main.scrollIntoView();
+});
+
 function renderHeader() {
   const user = getUser();
   const { path } = currentPath();

@@ -4,6 +4,7 @@ import { CLAUDE_SOURCE_NAME, CRITERIA, LIMITS } from '../../../shared/constants'
 import { endOfDayUtc } from '../../../shared/dates';
 import { adminTimezone, ApiError, type Ctx, type EssayRow, parseJson } from '../context';
 import { clearDashboardCache } from '../dashboardCache';
+import { MAX_CELL } from '../db';
 import { renameEssayFolder } from '../drive';
 import { processEmailQueue, type SendOutcome, sendEmail } from '../email';
 import { jobFromEvent, resultJob } from '../emailJobs';
@@ -174,6 +175,10 @@ function saveScore(ctx: Ctx, payload: unknown) {
     rewrite.dueDate = rewriteR.date('dueDate', !rewrite.required);
     r.absorb('rewrite', rewriteR);
   }
+  const feedbackJson = JSON.stringify(feedback);
+  if (feedbackJson.length > MAX_CELL - 1000) {
+    r.addError('feedback', 'The feedback is too long in total. Please shorten it.');
+  }
   r.done();
 
   // Scores (overall always recomputed with the app's rounding).
@@ -184,7 +189,7 @@ function saveScore(ctx: Ctx, payload: unknown) {
     criterion_3: scores[2] ?? '',
     criterion_4: scores[3] ?? '',
     overall: complete ? overallBand(scores as number[]) : '',
-    feedback_json: JSON.stringify(feedback),
+    feedback_json: feedbackJson,
     general_comment: generalComment,
     updated_at: ctx.nowIso,
   };

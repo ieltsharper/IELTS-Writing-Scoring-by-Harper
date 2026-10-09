@@ -12,6 +12,7 @@ import {
   filterBar,
   highlightsSection,
   perWeekChart,
+  rewriteImprovementsSection,
   topErrorsSection,
 } from '../statsWidgets';
 import type { MyAssignment } from './assigned';
@@ -93,6 +94,7 @@ export function dashboardPage(ctx: RouteContext): Node {
             navigate(`/dashboard${q.toString() ? `?${q}` : ''}`);
           }),
           highlightsSection(data.highlights),
+          rewriteImprovementsSection(data.rewriteImprovements, (id) => `/essays/${id}`),
           h(
             'div',
             { class: 'stat-grid' },

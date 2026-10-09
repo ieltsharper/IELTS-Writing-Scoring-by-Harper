@@ -1,16 +1,17 @@
 // Dashboard widgets shared by the student dashboard and the admin student overview.
 import {
   CRITERIA,
+  CRITERION_SHORT,
   criterionLabel,
   type Criterion,
   MODES,
   TASK_TYPE_LABELS,
 } from '../../shared/constants';
-import type { Highlight, TopError } from '../../shared/dashboard';
+import type { Highlight, RewriteImprovement, TopError } from '../../shared/dashboard';
 import { type Child, h } from '../dom';
 import { chartBox, COLORS } from '../ui/charts';
-import { empty, field, selectEl } from '../ui/components';
-import { formatBand, formatDate, modeLabel } from '../ui/format';
+import { empty, field, selectEl, table } from '../ui/components';
+import { formatBand, formatDate, modeLabel, signed } from '../ui/format';
 
 export interface DashboardStats {
   bandOverTime: Array<{
@@ -26,6 +27,35 @@ export interface DashboardStats {
   highlights: Highlight[];
   perWeek: Array<{ week: string; count: number }>;
   counts: { submitted: number; scored: number };
+  rewriteImprovements: RewriteImprovement[];
+}
+
+/** Original vs rewrite, per criterion and overall. */
+export function rewriteImprovementsSection(
+  list: RewriteImprovement[],
+  href: (essayId: string) => string,
+): Child {
+  if (list.length === 0) return null;
+  const keys = [...CRITERIA, 'overall'] as const;
+  return h(
+    'section',
+    { class: 'card' },
+    h('h2', null, 'Improvement from original to rewrite'),
+    table(
+      ['Essay', ...keys.map((k) => (k === 'overall' ? 'Overall' : CRITERION_SHORT[k]))],
+      list.map((x) => [
+        h('a', { href: `#${href(x.rewriteId)}` }, x.topic),
+        ...keys.map((k) =>
+          h(
+            'span',
+            { class: x.change[k] > 0 ? 'up' : x.change[k] < 0 ? 'down' : '' },
+            `${formatBand(x.original[k])} → ${formatBand(x.rewrite[k])} (${signed(x.change[k])})`,
+          ),
+        ),
+      ]),
+      'Band change per criterion (TA/TR, CC, LR, GRA) and overall',
+    ),
+  );
 }
 
 export function filterBar(
