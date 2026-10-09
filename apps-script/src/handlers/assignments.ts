@@ -1,6 +1,7 @@
 // Assigned test mode: the admin sets the prompt; students get one timed attempt.
 import {
   LIMITS,
+  OVER_TIME_GRACE_SECONDS,
   TASK_TYPE_LABELS,
   TASK_TYPES,
   TIME_LIMITS,
@@ -15,7 +16,7 @@ import { assignmentEmail } from '../emailTemplates';
 import type { ActionDef } from '../router';
 import type { Row } from '../schema';
 import { Reader } from '../validate';
-import { essayDetail, scoreView } from '../views';
+import { deadlineAt, essayDetail, scoreView } from '../views';
 import { checkImage } from '../../../shared/image';
 
 type AssignmentRow = Row<'Assignments'>;
@@ -51,7 +52,15 @@ export function assignmentStatus(
   essay: EssayRow | undefined,
 ): AssignmentStudentStatus {
   if (!essay) return Date.parse(a.closes_at) <= ctx.now.getTime() ? 'missed' : 'not_started';
-  if (essay.status === 'draft') return 'in_progress';
+  if (essay.status === 'draft') {
+    // Started but nothing was handed in before the time ran out.
+    const deadline = deadlineAt(ctx, essay);
+    const expired =
+      deadline &&
+      ctx.now.getTime() > Date.parse(deadline) + OVER_TIME_GRACE_SECONDS * 1000 &&
+      ctx.now.getTime() >= Date.parse(a.closes_at);
+    return expired ? 'missed' : 'in_progress';
+  }
   return bool(essay.over_time) ? 'over_time' : 'submitted';
 }
 

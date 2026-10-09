@@ -244,7 +244,11 @@ function startTest(ctx: Ctx, payload: unknown, user: AuthUser) {
 export function finalizeSubmission(
   ctx: Ctx,
   essay: EssayRow,
-  options: { autoSubmitted: boolean },
+  /**
+   * `at`: when the hourly job submits an abandoned test, the moment the time
+   * ran out, so the essay is not marked over time for a delay that was ours.
+   */
+  options: { autoSubmitted: boolean; at?: string },
 ): EssayRow {
   const problems: Record<string, string> = {};
   if (!essay.prompt.trim()) problems.prompt = 'Enter the task prompt';
@@ -265,12 +269,13 @@ export function finalizeSubmission(
   };
   if (essay.mode !== 'practice' && essay.started_at) {
     // Timing is computed on the server; the browser clock is never trusted.
-    const used = Math.round((ctx.now.getTime() - Date.parse(essay.started_at)) / 1000);
+    const endMs = options.at ? Date.parse(options.at) : ctx.now.getTime();
+    const used = Math.round((endMs - Date.parse(essay.started_at)) / 1000);
     const deadline = deadlineAt(ctx, essay);
     patch.time_used_seconds = used;
     patch.auto_submitted = options.autoSubmitted;
     patch.over_time = deadline
-      ? ctx.now.getTime() > Date.parse(deadline) + OVER_TIME_GRACE_SECONDS * 1000
+      ? endMs > Date.parse(deadline) + OVER_TIME_GRACE_SECONDS * 1000
       : false;
   }
   ctx.db.update('Essays', (e) => e.id === essay.id, patch);

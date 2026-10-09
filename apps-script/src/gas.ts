@@ -1,7 +1,9 @@
 // Apps Script entry points and the real Google service adapters.
 // Everything else in the back end is plain TypeScript that receives `Services`.
 import { callApi } from './api';
+import { adminTimezone, createCtx } from './context';
 import { runSetup } from './setup';
+import { runDailyJob, runHourlyJob } from './triggers';
 import type { DriveService, MailService, ScriptProps, Services, StoredFile } from './services';
 
 function scriptProps(): ScriptProps {
@@ -140,6 +142,43 @@ export function setup() {
   }
 }
 
-export function installTriggers() {}
-export function dailyJob() {}
-export function hourlyJob() {}
+const TRIGGER_HANDLERS = ['dailyJob', 'hourlyJob'];
+
+/**
+ * Run once from the Apps Script editor (after setup). Replaces any existing
+ * triggers for these jobs, so running it again is safe.
+ */
+export function installTriggers() {
+  for (const t of ScriptApp.getProjectTriggers()) {
+    if (TRIGGER_HANDLERS.includes(t.getHandlerFunction())) ScriptApp.deleteTrigger(t);
+  }
+  const svc = realServices();
+  const tz = runSetupTimezone(svc);
+  ScriptApp.newTrigger('dailyJob').timeBased().everyDays(1).atHour(7).inTimezone(tz).create();
+  ScriptApp.newTrigger('hourlyJob').timeBased().everyHours(1).create();
+  const message = `Installed dailyJob (07:00 ${tz}) and hourlyJob triggers.`;
+  console.log(message);
+  return message;
+}
+
+function runSetupTimezone(svc: Services): string {
+  try {
+    return adminTimezone(createCtx(svc));
+  } catch {
+    return 'Asia/Ho_Chi_Minh';
+  }
+}
+
+/** Daily: rewrite reminders 2 days before, overdue status and email, housekeeping. */
+export function dailyJob() {
+  const result = runDailyJob(realServices());
+  console.log(JSON.stringify(result));
+  return result;
+}
+
+/** Hourly: send queued email when quota returns; auto-submit abandoned timed tests. */
+export function hourlyJob() {
+  const result = runHourlyJob(realServices());
+  console.log(JSON.stringify(result));
+  return result;
+}
