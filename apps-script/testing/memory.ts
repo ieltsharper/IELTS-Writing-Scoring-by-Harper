@@ -289,10 +289,16 @@ export interface MemoryServices extends Services {
   advance(ms: number): void;
 }
 
-export function createMemoryServices(props: Partial<ScriptProps> = {}): MemoryServices {
+export function createMemoryServices(
+  props: Partial<ScriptProps> = {},
+  options: { realTime?: boolean } = {},
+): MemoryServices {
+  // Tests use a fixed clock; the mock API server follows real time (plus any advance()).
   let current = new Date('2026-10-10T03:00:00.000Z');
+  let offset = 0;
   let uuidSeq = 0;
-  const clock = () => new Date(current.getTime());
+  const clock = () =>
+    options.realTime ? new Date(Date.now() + offset) : new Date(current.getTime());
   const svc: MemoryServices = {
     spreadsheet: new MemorySpreadsheet(),
     drive: new MemoryDrive('root-folder'),
@@ -318,9 +324,11 @@ export function createMemoryServices(props: Partial<ScriptProps> = {}): MemorySe
     log: () => undefined,
     setNow(date) {
       current = new Date(date);
+      offset = new Date(date).getTime() - Date.now();
     },
     advance(ms) {
       current = new Date(current.getTime() + ms);
+      offset += ms;
     },
   };
   return svc;

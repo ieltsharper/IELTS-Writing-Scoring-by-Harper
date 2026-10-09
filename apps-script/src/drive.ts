@@ -33,9 +33,22 @@ export function expectedFolderName(ctx: Ctx, essay: EssayRow): string {
   });
 }
 
-function isAssignmentImage(ctx: Ctx, essay: EssayRow): boolean {
-  if (!essay.assignment_id || !essay.image_file_id) return false;
-  return ctx.db.byId('Assignments', essay.assignment_id)?.image_file_id === essay.image_file_id;
+/**
+ * True when the essay's image belongs to something else as well: the
+ * assignment it came from, or the original essay of a rewrite. Shared images
+ * are copied into the essay folder instead of moved, and never trashed.
+ */
+export function isSharedImage(ctx: Ctx, essay: EssayRow): boolean {
+  if (!essay.image_file_id) return false;
+  if (
+    essay.assignment_id &&
+    ctx.db.byId('Assignments', essay.assignment_id)?.image_file_id === essay.image_file_id
+  ) {
+    return true;
+  }
+  return ctx.db
+    .all('Essays')
+    .some((other) => other.id !== essay.id && other.image_file_id === essay.image_file_id);
 }
 
 /**
@@ -57,7 +70,7 @@ export function archiveEssay(ctx: Ctx, essayId: string): 'ok' | 'failed' {
       essay = { ...essay, drive_folder_id: folderId };
     }
     if (essay.task_type === 'task1_academic' && essay.image_file_id) {
-      if (isAssignmentImage(ctx, essay)) {
+      if (isSharedImage(ctx, essay)) {
         drive.copyFile(essay.image_file_id, folderId, 'Chart image');
       } else {
         drive.moveFile(essay.image_file_id, folderId);
@@ -104,7 +117,7 @@ export function renameEssayFolder(ctx: Ctx, essayId: string): void {
 export function trashEssayFiles(ctx: Ctx, essay: EssayRow): void {
   try {
     if (essay.drive_folder_id) ctx.svc.drive.trashFolder(essay.drive_folder_id);
-    else if (essay.image_file_id && !isAssignmentImage(ctx, essay)) {
+    else if (essay.image_file_id && !isSharedImage(ctx, essay)) {
       ctx.svc.drive.trashFile(essay.image_file_id);
     }
   } catch (err) {

@@ -6,6 +6,7 @@
   "description": "IELTS Writing practice and scoring app (Vite front end + Google Apps Script back end)",
   "scripts": {
     "dev": "vite",
+    "dev:mock": "vite --mode mock",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json && tsc -p apps-script/tsconfig.json && tsc -p tsconfig.node.json",
