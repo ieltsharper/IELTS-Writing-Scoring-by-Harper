@@ -126,12 +126,16 @@ function saveDraft(ctx: Ctx, payload: unknown, user: AuthUser) {
   }
 
   const parentId = r.id('parentEssayId', true);
-  let taskType = r.oneOf('taskType', TASK_TYPES) as TaskType;
-  let topicId = r.id('topicId');
+  // A rewrite takes its task type, topic, prompt and image from the original.
+  const isRewrite = Boolean(parentId || existing?.parent_essay_id);
+  let taskType = r.oneOf('taskType', TASK_TYPES, isRewrite) as TaskType;
+  let topicId = r.id('topicId', isRewrite);
   let prompt = r.str('prompt', { max: LIMITS.prompt, optional: true });
   const testDate = r.date('testDate', true);
   const removeImage = r.bool('removeImage');
-  if (topicId && !activeTopic(ctx, topicId)) r.addError('topicId', 'Choose a topic from the list');
+  if (!isRewrite && topicId && !activeTopic(ctx, topicId)) {
+    r.addError('topicId', 'Choose a topic from the list');
+  }
   if (taskType === 'task2' && image) r.addError('image', 'Task 2 essays do not have an image');
   r.done();
 

@@ -652,7 +652,12 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
     requestId,
   });
 
-  const saveBtn = h('button', { type: 'button', class: 'btn' }, 'Save draft');
+  // A scored essay is updated with "Submit score" only, so students never see half-edited scores.
+  const saveBtn = h(
+    'button',
+    { type: 'button', class: 'btn', hidden: essay.status === 'scored' },
+    'Save draft',
+  );
   const submitBtn = h('button', { type: 'button', class: 'btn btn-primary' }, 'Submit score');
 
   const showOutcome = (res: { email: string; driveRenamed?: boolean }) => {

@@ -3,6 +3,7 @@ import { accountActions } from './handlers/account';
 import { adminActions } from './handlers/admin';
 import { claudeSetupActions } from './handlers/claudeSetup';
 import { listActions } from './handlers/lists';
+import { scoringActions } from './handlers/scoring';
 import { assignmentActions } from './handlers/assignments';
 import { essayActions } from './handlers/essays';
 import { type ApiResponse, handleRequest, registerActions } from './router';
@@ -19,6 +20,7 @@ function ensureRegistered(): void {
   registerActions(adminActions);
   registerActions(listActions);
   registerActions(claudeSetupActions);
+  registerActions(scoringActions);
 }
 
 export function callApi(svc: Services, rawBody: string): ApiResponse {
