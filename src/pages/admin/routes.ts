@@ -1,4 +1,12 @@
 import type { Route } from '../../router';
+import { claudeSetupPage } from './claudeSetup';
+import { listsPage } from './lists';
+import { queuePage } from './queue';
+import { scoringPage } from './scoring';
 
-// Admin pages are added in build step 5.
-export const routes: Route[] = [];
+export const routes: Route[] = [
+  { pattern: '/admin', guard: 'admin', title: 'Queue', render: queuePage },
+  { pattern: '/admin/score/:id', guard: 'admin', title: 'Scoring', render: scoringPage },
+  { pattern: '/admin/lists', guard: 'admin', title: 'Lists', render: listsPage },
+  { pattern: '/admin/claude', guard: 'admin', title: 'Claude setup', render: claudeSetupPage },
+];

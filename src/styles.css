@@ -831,6 +831,76 @@ mark.err.active {
   max-width: 720px;
 }
 
+.plain-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+}
+
+.list-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.list-row.inactive input:not([type='checkbox']) {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+label.inline {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+}
+
+.add-row .field {
+  margin-bottom: 0;
+  min-width: 200px;
+}
+
+.overall {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+
+fieldset.card {
+  min-width: 0;
+}
+
+fieldset.card legend {
+  font-weight: 700;
+  padding: 0 4px;
+}
+
+.error-list .flagged {
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.error-list li > select,
+.error-list li > input {
+  margin-top: 4px;
+}
+
+pre.plain-text {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.85rem;
+  max-height: 420px;
+  overflow: auto;
+}
+
 @media (max-width: 1000px) {
   .scoring-layout {
     grid-template-columns: 1fr;
