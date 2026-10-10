@@ -21,8 +21,27 @@ interface Cell {
   formula?: string;
 }
 
+/**
+ * Mimics how Google Sheets turns input into values in a cell that is NOT
+ * formatted as plain text, for a Vietnamese-locale spreadsheet (comma is the
+ * decimal separator, so "6.5" is read as the date 6 May).
+ */
+export function sheetsAutoParse(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  if (/^-?\d+$/.test(value)) return Number(value);
+  const dm = /^(\d{1,2})\.(\d{1,2})$/.exec(value);
+  if (dm && +dm[2] >= 1 && +dm[2] <= 12) return new Date(Date.UTC(2026, +dm[2] - 1, +dm[1]));
+  if (/^(true|false)$/i.test(value)) return value.toLowerCase() === 'true';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date(`${value}T00:00:00+07:00`);
+  if (/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(value)) return new Date(value);
+  return value;
+}
+
 export class MemorySheet implements SheetLike {
   cells: Cell[][] = [];
+  /** Per row, the columns formatted as plain text ("@"). Shifts with deleted rows. */
+  textFormat: Array<Set<number>> = [];
+  maxRows = 1000;
   frozenRows = 0;
   constructor(private name: string) {}
 
@@ -36,16 +55,28 @@ export class MemorySheet implements SheetLike {
     return this.cells.reduce((m, r) => Math.max(m, r.length), 0);
   }
   getMaxRows() {
-    return Math.max(1000, this.cells.length);
+    return this.maxRows;
   }
-  private write(value: unknown): Cell {
+  insertRowsAfter(afterPosition: number, howMany: number) {
+    if (afterPosition > this.maxRows) throw new Error('Row out of bounds');
+    this.maxRows += howMany;
+    this.textFormat.splice(
+      afterPosition,
+      0,
+      ...Array.from({ length: howMany }, () => new Set<number>()),
+    );
+  }
+  private write(value: unknown, asText: boolean): Cell {
     if (typeof value === 'string' && value.startsWith("'")) return { value: value.slice(1) };
     if (typeof value === 'string' && value.startsWith('=')) {
       return { value: '#ERROR!', formula: value };
     }
-    return { value };
+    return { value: asText ? value : sheetsAutoParse(value) };
   }
   getRange(row: number, column: number, numRows: number, numColumns: number): RangeLike {
+    if (row < 1 || row + numRows - 1 > this.maxRows) {
+      throw new Error(`Range is out of bounds (row ${row + numRows - 1} > ${this.maxRows})`);
+    }
     return {
       getValues: () => {
         const out: unknown[][] = [];
@@ -61,17 +92,29 @@ export class MemorySheet implements SheetLike {
       setValues: (values: unknown[][]) => {
         values.forEach((line, r) => {
           const target = (this.cells[row - 1 + r] ??= []);
-          line.forEach((v, c) => (target[column - 1 + c] = this.write(v)));
+          const fmt = this.textFormat[row - 1 + r];
+          line.forEach(
+            (v, c) => (target[column - 1 + c] = this.write(v, Boolean(fmt?.has(column + c)))),
+          );
         });
+        // Rows written past existing data leave no gaps in this simple model.
+        for (let i = 0; i < this.cells.length; i++) this.cells[i] ??= [];
       },
-      setNumberFormat: () => undefined,
+      setNumberFormat: (format: string) => {
+        for (let r = row; r < row + numRows; r++) {
+          const set = (this.textFormat[r - 1] ??= new Set<number>());
+          for (let c = column; c < column + numColumns; c++) {
+            if (format === '@') set.add(c);
+            else set.delete(c);
+          }
+        }
+      },
     };
-  }
-  appendRow(rowContents: unknown[]) {
-    this.cells.push(rowContents.map((v) => this.write(v)));
   }
   deleteRow(rowPosition: number) {
     this.cells.splice(rowPosition - 1, 1);
+    this.textFormat.splice(rowPosition - 1, 1);
+    this.textFormat.push(new Set<number>());
   }
   setFrozenRows(rows: number) {
     this.frozenRows = rows;

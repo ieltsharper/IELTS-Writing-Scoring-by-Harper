@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Db, fromCell, toCell } from '../../apps-script/src/db';
 import { runSetup } from '../../apps-script/src/setup';
 import { createMemoryServices } from '../../apps-script/testing/memory';
+import { createTestApp } from '../helpers';
 
 describe('formula-safe cells', () => {
   it('prefixes values Sheets would run as formulas', () => {
@@ -44,5 +45,56 @@ describe('formula-safe cells', () => {
     const fresh = new Db(svc.spreadsheet);
     expect(fresh.byId('Topics', 'a')?.label).toBe('A2');
     expect(fresh.byId('Topics', 'b')).toBeUndefined();
+  });
+});
+
+describe('values survive a Vietnamese-locale Sheet', () => {
+  it('the mock really converts unformatted "6.5" into a date (so the test below means something)', () => {
+    const svc = createMemoryServices();
+    const sheet = svc.spreadsheet.insertSheet('Raw');
+    sheet.getRange(1, 1, 1, 2).setValues([['6.5', '2026-10-15']]);
+    const [band, date] = sheet.getRange(1, 1, 1, 2).getValues()[0];
+    expect(band).toBeInstanceOf(Date);
+    expect(date).toBeInstanceOf(Date);
+  });
+
+  it('stores decimals, dates and booleans as text, even past the formatted rows', () => {
+    const svc = createMemoryServices();
+    runSetup(svc, { demo: false });
+    const users = svc.spreadsheet.getSheetByName('Users')!;
+    // Pretend the tab is small and unformatted below the header, like a hand-made tab.
+    users.maxRows = 3;
+    users.textFormat = [users.textFormat[0]];
+    const db = new Db(svc.spreadsheet);
+    for (let i = 0; i < 5; i++) {
+      db.insert('Users', {
+        id: `u${i}`,
+        name: 'N',
+        email: `u${i}@x.com`,
+        target_band: '6.5',
+        exam_date: '2026-10-15',
+        consent_at: '2026-10-10T03:00:00.000Z',
+      });
+    }
+    db.update('Users', (u) => u.id === 'u1', { target_band: '7.5' });
+    const fresh = new Db(svc.spreadsheet);
+    expect(fresh.byId('Users', 'u0')).toMatchObject({
+      target_band: '6.5',
+      exam_date: '2026-10-15',
+      consent_at: '2026-10-10T03:00:00.000Z',
+    });
+    expect(fresh.byId('Users', 'u1')!.target_band).toBe('7.5');
+    expect(fresh.byId('Users', 'u4')!.target_band).toBe('6.5');
+    expect(users.getMaxRows()).toBeGreaterThan(3);
+  });
+
+  it('demo scores read back with their decimals', () => {
+    const app = createTestApp();
+    const admin = app.login('admin@example.com');
+    const students = app.call('admin.students', {}, admin);
+    const an = students.find((s: any) => s.name === 'Nguyen Van An');
+    const binh = students.find((s: any) => s.name === 'Tran Thi Binh');
+    expect(an).toMatchObject({ averageBand: 5.8, targetBand: 6.5 });
+    expect(binh).toMatchObject({ averageBand: 6.5, targetBand: 7 });
   });
 });

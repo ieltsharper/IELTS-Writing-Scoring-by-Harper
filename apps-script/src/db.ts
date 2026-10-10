@@ -64,6 +64,18 @@ export class Db {
     return entry;
   }
 
+  /**
+   * Write one row as plain text. The range is formatted as text first, so
+   * Sheets never converts values (in a Vietnamese-locale Sheet "6.5" would
+   * otherwise become a date). appendRow is not used: it parses values like
+   * typed input and ignores the cell format.
+   */
+  private writeRow(entry: TableCache, rowNumber: number, row: Record<string, string>) {
+    const range = entry.sheet.getRange(rowNumber, 1, 1, entry.header.length);
+    range.setNumberFormat('@');
+    range.setValues([this.toValues(entry.header, row)]);
+  }
+
   private toValues(header: string[], row: Record<string, string>): string[] {
     return header.map((col) => toCell(row[col]));
   }
@@ -92,7 +104,11 @@ export class Db {
       const v = (values as Record<string, unknown>)[col];
       row[col] = v === null || v === undefined ? '' : String(v);
     }
-    entry.sheet.appendRow(this.toValues(entry.header, row));
+    // Rows are cached in order, so the next free sheet row is right after them.
+    const rowNumber = entry.rows.length + 2;
+    const maxRows = entry.sheet.getMaxRows();
+    if (rowNumber > maxRows) entry.sheet.insertRowsAfter(maxRows, 500);
+    this.writeRow(entry, rowNumber, row);
     entry.rows.push(row);
     return { ...row } as Row<T>;
   }
@@ -109,9 +125,7 @@ export class Db {
       for (const [k, v] of Object.entries(patch)) {
         row[k] = v === null || v === undefined ? '' : String(v);
       }
-      entry.sheet
-        .getRange(i + 2, 1, 1, entry.header.length)
-        .setValues([this.toValues(entry.header, row)]);
+      this.writeRow(entry, i + 2, row);
       count++;
     });
     return count;

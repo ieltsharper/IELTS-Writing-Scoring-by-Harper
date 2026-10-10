@@ -16,7 +16,7 @@ export interface SheetLike {
   getLastColumn(): number;
   getMaxRows(): number;
   getRange(row: number, column: number, numRows: number, numColumns: number): RangeLike;
-  appendRow(rowContents: unknown[]): unknown;
+  insertRowsAfter(afterPosition: number, howMany: number): unknown;
   deleteRow(rowPosition: number): unknown;
   setFrozenRows(rows: number): unknown;
 }
