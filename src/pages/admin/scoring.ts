@@ -39,7 +39,7 @@ import {
 import { type CategoryValues, categoryFields } from '../../ui/categoryFields';
 import { copyText } from '../../ui/clipboard';
 import { openResultPreview, type ServerPreview } from './resultPreview';
-import { essayText, selectionOffsets } from '../../ui/essayText';
+import { essayText, highlightLegend, selectionOffsets } from '../../ui/essayText';
 import { formatBand, formatDateTime, modeLabel, signed, taskLabel } from '../../ui/format';
 import { remoteImage } from '../../ui/image';
 import { plainText } from '../../ui/markdown';
@@ -189,6 +189,7 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
           'Uncategorised',
         correction: e.correction,
         active: e.key === activeKey,
+        criterion: data.categories.find((c) => c.id === e.categoryId)?.criterion ?? null,
       })),
       (id) => {
         activeKey = id;
@@ -250,6 +251,7 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
       : null,
     h('h3', null, 'Essay text'),
     selectionInfo,
+    highlightLegend(),
     textHolder,
     data.parent
       ? h(
@@ -267,6 +269,7 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
               end: e.end,
               label: e.category,
               correction: e.correction,
+              criterion: e.criterion,
             })),
           ),
           link(`/admin/score/${data.parent.id}`, 'Open the original'),
@@ -767,6 +770,7 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
         errors: state.errors.map((e) => ({
           key: e.key,
           category: categoryName(e.categoryId),
+          criterion: data.categories.find((c) => c.id === e.categoryId)?.criterion ?? null,
           excerpt: e.excerpt,
           start: e.start,
           end: e.end,

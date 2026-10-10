@@ -1023,3 +1023,62 @@ main:has(.page-centered) {
   margin: 0;
   overflow-wrap: anywhere;
 }
+
+/* Error highlights coloured by criterion: red TA/TR, orange CC, blue LR, purple GRA. */
+mark.err.err-task {
+  background: #fecaca;
+  border-bottom-color: #b91c1c;
+}
+mark.err.err-task.active {
+  background: #fca5a5;
+}
+mark.err.err-coherence {
+  background: #fed7aa;
+  border-bottom-color: #c2410c;
+}
+mark.err.err-coherence.active {
+  background: #fdba74;
+}
+mark.err.err-lexical {
+  background: #bfdbfe;
+  border-bottom-color: #1d4ed8;
+}
+mark.err.err-lexical.active {
+  background: #93c5fd;
+}
+mark.err.err-grammar {
+  background: #e9d5ff;
+  border-bottom-color: #7e22ce;
+}
+mark.err.err-grammar.active {
+  background: #d8b4fe;
+}
+mark.err.active {
+  outline: 2px solid #111827;
+  outline-offset: 1px;
+}
+
+.highlight-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin: 0 0 8px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.legend-item mark.err {
+  display: inline-block;
+  width: 18px;
+  height: 14px;
+  cursor: default;
+}

@@ -1,6 +1,7 @@
 // Essay text with highlighted errors. Text is inserted as text nodes, and the
 // rendered characters match the stored body exactly, so selections map to
 // character offsets.
+import { CRITERIA, CRITERION_SHORT, type Criterion } from '../../shared/constants';
 import { h } from '../dom';
 
 export interface Highlight {
@@ -10,6 +11,25 @@ export interface Highlight {
   label: string;
   correction: string;
   active?: boolean;
+  /** Colours the highlight: red TA/TR, orange CC, blue LR, purple GRA. */
+  criterion?: Criterion | null;
+}
+
+/** Colour key shown above highlighted essays (colour is never the only cue: each mark names its category). */
+export function highlightLegend(): HTMLElement {
+  return h(
+    'p',
+    { class: 'highlight-legend' },
+    'Highlight colours: ',
+    ...CRITERIA.map((c) =>
+      h(
+        'span',
+        { class: `legend-item err-${c}` },
+        h('mark', { class: `err err-${c}`, 'aria-hidden': 'true' }, ' '),
+        CRITERION_SHORT[c],
+      ),
+    ),
+  );
 }
 
 export function essayText(
@@ -41,7 +61,7 @@ export function essayText(
     const mark = h(
       'mark',
       {
-        class: `err${covering.some((x) => x.active) ? ' active' : ''}`,
+        class: `err${covering[0].criterion ? ` err-${covering[0].criterion}` : ''}${covering.some((x) => x.active) ? ' active' : ''}`,
         tabindex: onSelectHighlight ? '0' : null,
         title: description,
         'aria-label': `${text} (error — ${description})`,

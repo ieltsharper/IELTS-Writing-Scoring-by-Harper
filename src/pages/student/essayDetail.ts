@@ -5,7 +5,7 @@ import { type Child, h, replace } from '../../dom';
 import type { RouteContext } from '../../router';
 import type { EssayDetail, ErrorView, ScoreView } from '../../types';
 import { async, badge, link, notice, page, table } from '../../ui/components';
-import { essayText } from '../../ui/essayText';
+import { essayText, highlightLegend } from '../../ui/essayText';
 import {
   countdown,
   formatBand,
@@ -118,6 +118,7 @@ export function essayDetailPage(ctx: RouteContext): Node {
               label: e.category,
               correction: e.correction,
               active: e.id === active,
+              criterion: e.criterion,
             })),
             (id) => {
               active = id;
@@ -249,6 +250,7 @@ export function essayDetailPage(ctx: RouteContext): Node {
                 { class: 'hint' },
                 'Highlighted text has a tagged error. Select it to see the correction.',
               ),
+              highlightLegend(),
               textBox,
             ),
             h(

@@ -4,7 +4,7 @@ import { CRITERIA, criterionLabel, type Criterion, type TaskType } from '../../.
 import { h } from '../../dom';
 import type { ScoreView } from '../../types';
 import { badge, notice } from '../../ui/components';
-import { essayText } from '../../ui/essayText';
+import { essayText, highlightLegend } from '../../ui/essayText';
 import { formatBand, formatDateTime } from '../../ui/format';
 import { markdown } from '../../ui/markdown';
 import { tabs } from '../../ui/tabs';
@@ -30,6 +30,7 @@ export interface PreviewContent {
   errors: Array<{
     key: string;
     category: string;
+    criterion: Criterion | null;
     excerpt: string;
     start: number | null;
     end: number | null;
@@ -81,6 +82,7 @@ function studentView(p: PreviewContent, server: ServerPreview): HTMLElement {
       ),
     ),
     h('h3', null, `Essay with highlighted errors (${sorted.length})`),
+    highlightLegend(),
     essayText(
       p.body,
       sorted.map((e) => ({
@@ -89,6 +91,7 @@ function studentView(p: PreviewContent, server: ServerPreview): HTMLElement {
         end: e.end,
         label: e.category,
         correction: e.correction,
+        criterion: e.criterion,
       })),
     ),
     sorted.length
