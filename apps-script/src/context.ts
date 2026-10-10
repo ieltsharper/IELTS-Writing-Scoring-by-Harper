@@ -83,9 +83,5 @@ export function parseJson<T>(value: string, fallback: T): T {
   }
 }
 
-export function topicLabel(ctx: Ctx, topicId: string): string {
-  return ctx.db.byId('Topics', topicId)?.label ?? 'Other';
-}
-
 export type UserRow = Row<'Users'>;
 export type EssayRow = Row<'Essays'>;

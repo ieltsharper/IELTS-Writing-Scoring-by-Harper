@@ -7,7 +7,8 @@ import {
   TIME_LIMITS,
   type TaskType,
 } from '../../shared/constants';
-import { bool, type Ctx, type EssayRow, num, parseJson, topicLabel } from './context';
+import { essayLabel, topicName } from './category';
+import { bool, type Ctx, type EssayRow, num, parseJson } from './context';
 import type { Row } from './schema';
 
 export type StudentEssayStatus =
@@ -134,7 +135,11 @@ export function essaySummary(ctx: Ctx, essay: EssayRow) {
     mode: essay.mode,
     taskType: essay.task_type as TaskType,
     topicId: essay.topic_id,
-    topic: topicLabel(ctx, essay.topic_id),
+    /** Display label: diagram type (Task 1) or "Topic · Essay type" (Task 2). */
+    topic: essayLabel(ctx, essay),
+    topicName: topicName(ctx, essay.topic_id),
+    diagramType: essay.diagram_type,
+    essayType: essay.essay_type,
     promptPreview: essay.prompt.slice(0, 140),
     wordCount: num(essay.word_count) ?? 0,
     status: essay.status,

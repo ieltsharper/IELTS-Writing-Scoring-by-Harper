@@ -80,7 +80,7 @@ describe('hourly job', () => {
     const topicId = app.call('config.get').topics[0].id;
     const t = app.call(
       'essays.startTest',
-      { taskType: 'task2', topicId, prompt: 'Discuss the question.' },
+      { taskType: 'task2', topicId, essayType: 'discussion', prompt: 'Discuss the question.' },
       student,
     );
     app.call('essays.saveDraft', { id: t.id, body: 'Some words written before leaving.' }, student);
@@ -110,6 +110,7 @@ describe('assigned tests', () => {
         title: 'Week 3 test',
         taskType: 'task2',
         topicId,
+        essayType: 'discussion',
         prompt: 'Secret prompt about education.',
         classIds: [ielts5],
         studentIds: [],
@@ -150,6 +151,7 @@ describe('assigned tests', () => {
         title: 'Week 4 test',
         taskType: 'task2',
         topicId,
+        essayType: 'discussion',
         prompt: 'Another prompt here.',
         classIds: [ielts5],
         opensAt: now.toISOString(),

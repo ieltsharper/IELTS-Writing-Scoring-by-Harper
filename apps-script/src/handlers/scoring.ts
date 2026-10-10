@@ -1,8 +1,15 @@
 // Save draft / Submit score, rewrite requests, and email retry.
 import { overallBand } from '../../../shared/band';
-import { CLAUDE_SOURCE_NAME, CRITERIA, LIMITS } from '../../../shared/constants';
+import {
+  CLAUDE_SOURCE_NAME,
+  CRITERIA,
+  DIAGRAM_TYPE_IDS,
+  ESSAY_TYPE_IDS,
+  LIMITS,
+} from '../../../shared/constants';
 import { endOfDayUtc } from '../../../shared/dates';
 import { adminTimezone, ApiError, type Ctx, type EssayRow, parseJson } from '../context';
+import { type Category, categoryColumns } from '../category';
 import { clearDashboardCache } from '../dashboardCache';
 import { MAX_CELL } from '../db';
 import { renameEssayFolder } from '../drive';
@@ -162,8 +169,17 @@ function saveScore(ctx: Ctx, payload: unknown) {
     optional: true,
     trim: false,
   });
-  const topicId = r.id('topicId');
-  if (topicId && !ctx.db.byId('Topics', topicId)) r.addError('topicId', 'Unknown topic');
+  // Fields that are not sent keep their current value (older essays may lack them).
+  const category = {
+    topicId: r.has('topicId') ? r.id('topicId') : essay.topic_id,
+    diagramType: r.has('diagramType')
+      ? r.oneOf('diagramType', DIAGRAM_TYPE_IDS)
+      : essay.diagram_type,
+    essayType: r.has('essayType') ? r.oneOf('essayType', ESSAY_TYPE_IDS) : essay.essay_type,
+  } as Category;
+  if (category.topicId && !ctx.db.byId('Topics', category.topicId)) {
+    r.addError('topicId', 'Unknown topic');
+  }
   const errors = readErrors(ctx, r, essay, submit);
   const rewriteR = r.object('rewrite', true);
   const rewrite = {
@@ -216,8 +232,13 @@ function saveScore(ctx: Ctx, payload: unknown) {
     });
   }
 
-  if (topicId !== essay.topic_id) {
-    ctx.db.update('Essays', (x) => x.id === essay.id, { topic_id: topicId });
+  const columns = categoryColumns(category);
+  if (
+    columns.topic_id !== essay.topic_id ||
+    columns.diagram_type !== essay.diagram_type ||
+    columns.essay_type !== essay.essay_type
+  ) {
+    ctx.db.update('Essays', (x) => x.id === essay.id, columns);
     renameEssayFolder(ctx, essay.id);
   }
   applyRewrite(ctx, essay, rewrite);

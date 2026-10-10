@@ -22,6 +22,7 @@ import {
   toast,
 } from '../../ui/components';
 import { clock, formatDateTime, modeLabel, taskLabel } from '../../ui/format';
+import { categoryFields } from '../../ui/categoryFields';
 import { type PickedImage, readImageFile, remoteImage } from '../../ui/image';
 
 const LOCAL_SAVE_MS = 15_000;
@@ -178,12 +179,11 @@ function practiceEditor(
     Object.entries(TASK_TYPE_LABELS).map(([value, label]) => ({ value, label })),
     source?.taskType ?? 'task2',
   );
-  const topicSel = selectEl(
-    'topicId',
-    config.topics.map((t) => ({ value: t.id, label: t.label })),
-    source?.topicId ?? '',
-    'Choose a topic',
-  );
+  const category = categoryFields(config.topics, {
+    topicId: source?.topicId ?? '',
+    diagramType: source?.diagramType ?? '',
+    essayType: source?.essayType ?? '',
+  });
   const prompt = h('textarea', { name: 'prompt', rows: '4', maxlength: '4000' });
   prompt.value = source?.prompt ?? '';
   const testDate = h('input', { type: 'date', name: 'testDate', value: essay?.testDate ?? '' });
@@ -201,7 +201,7 @@ function practiceEditor(
 
   if (isRewrite) {
     taskSel.disabled = true;
-    topicSel.disabled = true;
+    category.disable();
     prompt.readOnly = true;
   }
 
@@ -255,6 +255,7 @@ function practiceEditor(
     const task1 = taskSel.value === 'task1_academic';
     imageField.hidden = !task1 || isRewrite;
     imagePreview.hidden = !task1;
+    category.setTaskType(taskSel.value);
   };
   taskSel.addEventListener('change', syncTaskType);
 
@@ -283,7 +284,7 @@ function practiceEditor(
     id: currentId ?? undefined,
     parentEssayId: parent?.id ?? undefined,
     taskType: taskSel.value,
-    topicId: topicSel.value,
+    ...category.values(),
     prompt: prompt.value,
     body: body.value,
     testDate: testDate.value || undefined,
@@ -361,9 +362,9 @@ function practiceEditor(
       : null,
     h(
       'div',
-      { class: 'grid-2' },
+      { class: 'grid-3' },
       field({ label: 'Task type', control: taskSel, name: 'taskType' }),
-      field({ label: 'Topic', control: topicSel, name: 'topicId' }),
+      ...category.fields,
     ),
     field({
       label: 'Task prompt',
@@ -385,15 +386,15 @@ function practiceEditor(
     status,
   );
   syncTaskType();
-  for (const el of [taskSel, topicSel, prompt, body, testDate]) {
+  for (const el of [taskSel, prompt, body, testDate]) {
     el.addEventListener('input', () => (dirty = true));
   }
+  category.onChange(() => (dirty = true));
   setUnsavedCheck(() => dirty);
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const errors: Record<string, string> = {};
-    if (!topicSel.value) errors.topicId = 'Choose a topic';
+    const errors: Record<string, string> = isRewrite ? {} : category.errors();
     if (!prompt.value.trim()) errors.prompt = 'Enter the task prompt';
     if (!body.value.trim()) errors.body = 'Write your essay';
     if (taskSel.value === 'task1_academic' && !pendingImage && !hasImage) {
@@ -434,12 +435,7 @@ function testSetup(config: AppConfig): HTMLElement {
     Object.entries(TASK_TYPE_LABELS).map(([value, label]) => ({ value, label })),
     'task2',
   );
-  const topicSel = selectEl(
-    'topicId',
-    config.topics.map((t) => ({ value: t.id, label: t.label })),
-    '',
-    'Choose a topic',
-  );
+  const category = categoryFields(config.topics);
   const prompt = h('textarea', { name: 'prompt', rows: '4', maxlength: '4000' });
   const fileInput = h('input', { type: 'file', name: 'image', accept: 'image/png,image/jpeg' });
   const status = h('div', { 'aria-live': 'polite' });
@@ -452,6 +448,7 @@ function testSetup(config: AppConfig): HTMLElement {
   const limitNote = h('p', { class: 'hint' });
   const sync = () => {
     imageField.hidden = taskSel.value !== 'task1_academic';
+    category.setTaskType(taskSel.value);
     limitNote.textContent = `Time limit: ${TIME_LIMITS[taskSel.value as TaskType]} minutes. The timer starts when you press "Start test" and keeps running if you leave the page.`;
   };
   taskSel.addEventListener('change', sync);
@@ -472,9 +469,9 @@ function testSetup(config: AppConfig): HTMLElement {
     { class: 'card', novalidate: true },
     h(
       'div',
-      { class: 'grid-2' },
+      { class: 'grid-3' },
       field({ label: 'Task type', control: taskSel, name: 'taskType' }),
-      field({ label: 'Topic', control: topicSel, name: 'topicId' }),
+      ...category.fields,
     ),
     field({
       label: 'Task prompt',
@@ -490,8 +487,7 @@ function testSetup(config: AppConfig): HTMLElement {
   sync();
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const errors: Record<string, string> = {};
-    if (!topicSel.value) errors.topicId = 'Choose a topic';
+    const errors: Record<string, string> = category.errors();
     if (prompt.value.trim().length < 10) errors.prompt = 'Enter the full task prompt';
     if (taskSel.value === 'task1_academic' && !image)
       errors.image = 'Attach the chart or diagram image first';
@@ -507,7 +503,7 @@ function testSetup(config: AppConfig): HTMLElement {
       try {
         const essay = await api<EssayDetail>('essays.startTest', {
           taskType: taskSel.value,
-          topicId: topicSel.value,
+          ...category.values(),
           prompt: prompt.value,
           image: image ?? undefined,
         });

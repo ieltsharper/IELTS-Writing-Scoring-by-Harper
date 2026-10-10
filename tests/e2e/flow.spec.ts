@@ -40,6 +40,7 @@ test('student submits an essay; admin scores it with Claude and an external tool
   await page.goto('#/new?mode=practice');
   await page.getByLabel('Task type').selectOption('task2');
   await page.getByLabel('Topic').selectOption({ label: 'Education' });
+  await page.getByLabel('Essay type').selectOption({ label: 'Discussion' });
   await page
     .getByLabel('Task prompt')
     .fill(

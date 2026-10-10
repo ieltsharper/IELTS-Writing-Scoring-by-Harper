@@ -241,7 +241,7 @@ describe('Apps Script bundle with fake Google services', () => {
     // Demo folders were created with the expected names.
     expect(
       [...g.folders.values()].some((f) =>
-        f.name.startsWith('Nguyen Van An - Task 1 Academic - Environment - '),
+        f.name.startsWith('Nguyen Van An - Task 1 Academic - Dynamic - '),
       ),
     ).toBe(true);
 

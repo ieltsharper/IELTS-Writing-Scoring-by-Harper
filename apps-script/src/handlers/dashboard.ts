@@ -14,7 +14,8 @@ import {
 import type { AuthUser } from '../auth';
 import { authorize } from '../authorize';
 import { calibrationFor } from '../calibration';
-import { ApiError, bool, type Ctx, num, topicLabel } from '../context';
+import { essayLabel } from '../category';
+import { ApiError, bool, type Ctx, num } from '../context';
 import { cached } from '../dashboardCache';
 import type { ActionDef } from '../router';
 import { Reader } from '../validate';
@@ -43,7 +44,9 @@ export function dashEssays(ctx: Ctx, user: AuthUser | null, studentId: string): 
         taskType: e.task_type,
         mode: e.mode,
         topicId: e.topic_id,
-        topic: topicLabel(ctx, e.topic_id),
+        topic: essayLabel(ctx, e),
+        diagramType: e.diagram_type,
+        essayType: e.essay_type,
         submittedAt: e.submitted_at,
         scoredAt: e.scored_at,
         wordCount: num(e.word_count) ?? 0,
@@ -110,7 +113,7 @@ function openRewrites(ctx: Ctx, studentId: string) {
     .find('RewriteRequests', (r) => essays.has(r.essay_id))
     .map((r) => ({
       ...rewriteView(ctx, r)!,
-      topic: topicLabel(ctx, essays.get(r.essay_id)!.topic_id),
+      topic: essayLabel(ctx, essays.get(r.essay_id)!),
     }))
     .filter((r) => r.status === 'requested' || r.status === 'overdue')
     .sort((a, b) => a.dueAt.localeCompare(b.dueAt));

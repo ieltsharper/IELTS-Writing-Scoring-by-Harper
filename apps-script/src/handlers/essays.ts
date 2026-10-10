@@ -10,7 +10,8 @@ import { checkImage } from '../../../shared/image';
 import { countWords } from '../../../shared/wordCount';
 import type { AuthUser } from '../auth';
 import { authorize } from '../authorize';
-import { ApiError, bool, type Ctx, type EssayRow, getNumberSetting, num } from '../context';
+import { type Category, categoryColumns, hasCategory, readCategory } from '../category';
+import { ApiError, type Ctx, type EssayRow, getNumberSetting, num } from '../context';
 import { clearDashboardCache } from '../dashboardCache';
 import { archiveEssay, isSharedImage, saveUploadedImage } from '../drive';
 import type { ActionDef } from '../router';
@@ -47,10 +48,6 @@ function loadEssay(ctx: Ctx, id: string): EssayRow {
   const essay = ctx.db.byId('Essays', id);
   if (!essay) throw new ApiError('not_found', 'Essay not found.');
   return essay;
-}
-
-function activeTopic(ctx: Ctx, topicId: string): boolean {
-  return Boolean(ctx.db.findOne('Topics', (t) => t.id === topicId && bool(t.active)));
 }
 
 /** Essays this student submitted in the last 24 hours that count toward the daily cap. */
@@ -127,16 +124,15 @@ function saveDraft(ctx: Ctx, payload: unknown, user: AuthUser) {
   }
 
   const parentId = r.id('parentEssayId', true);
-  // A rewrite takes its task type, topic, prompt and image from the original.
+  // A rewrite takes its task type, topic/diagram/essay type, prompt and image from the original.
   const isRewrite = Boolean(parentId || existing?.parent_essay_id);
   let taskType = r.oneOf('taskType', TASK_TYPES, isRewrite) as TaskType;
-  let topicId = r.id('topicId', isRewrite);
+  let category: Category = isRewrite
+    ? { topicId: '', diagramType: '', essayType: '' }
+    : readCategory(ctx, r, taskType, { activeTopicsOnly: true });
   let prompt = r.str('prompt', { max: LIMITS.prompt, optional: true });
   const testDate = r.date('testDate', true);
   const removeImage = r.bool('removeImage');
-  if (!isRewrite && topicId && !activeTopic(ctx, topicId)) {
-    r.addError('topicId', 'Choose a topic from the list');
-  }
   if (taskType === 'task2' && image) r.addError('image', 'Task 2 essays do not have an image');
   r.done();
 
@@ -148,7 +144,11 @@ function saveDraft(ctx: Ctx, payload: unknown, user: AuthUser) {
     // A rewrite keeps the original's task type, prompt, topic and image.
     taskType = parent.task_type as TaskType;
     prompt = parent.prompt;
-    topicId = parent.topic_id;
+    category = {
+      topicId: parent.topic_id,
+      diagramType: parent.diagram_type as Category['diagramType'],
+      essayType: parent.essay_type as Category['essayType'],
+    };
     imageFileId = parent.image_file_id;
   } else {
     const newImage = replaceImage(ctx, existing, image);
@@ -161,7 +161,7 @@ function saveDraft(ctx: Ctx, payload: unknown, user: AuthUser) {
 
   const fields = {
     task_type: taskType,
-    topic_id: topicId,
+    ...categoryColumns(category),
     prompt,
     body,
     word_count: countWords(body),
@@ -210,10 +210,9 @@ function saveDraft(ctx: Ctx, payload: unknown, user: AuthUser) {
 function startTest(ctx: Ctx, payload: unknown, user: AuthUser) {
   const r = new Reader(payload);
   const taskType = r.oneOf('taskType', TASK_TYPES) as TaskType;
-  const topicId = r.id('topicId');
+  const category = readCategory(ctx, r, taskType, { activeTopicsOnly: true });
   const prompt = r.str('prompt', { max: LIMITS.prompt, min: 10 });
   const image = readImage(r);
-  if (topicId && !activeTopic(ctx, topicId)) r.addError('topicId', 'Choose a topic from the list');
   if (taskType === 'task1_academic' && !image) {
     r.addError('image', 'Attach the chart or diagram image before starting the test.');
   }
@@ -230,7 +229,7 @@ function startTest(ctx: Ctx, payload: unknown, user: AuthUser) {
     over_time: false,
     paste_attempts: 0,
     task_type: taskType,
-    topic_id: topicId,
+    ...categoryColumns(category),
     prompt,
     body: '',
     word_count: 0,
@@ -253,7 +252,10 @@ export function finalizeSubmission(
 ): EssayRow {
   const problems: Record<string, string> = {};
   if (!essay.prompt.trim()) problems.prompt = 'Enter the task prompt';
-  if (!essay.topic_id) problems.topicId = 'Choose a topic';
+  if (!hasCategory(essay)) {
+    if (essay.task_type === 'task1_academic') problems.diagramType = 'Choose the diagram type';
+    else problems.topicId = 'Choose a topic';
+  }
   if (countWords(essay.body) === 0 && essay.mode === 'practice') problems.body = 'Write your essay';
   if (essay.task_type === 'task1_academic' && !essay.image_file_id) {
     problems.image = 'Task 1 Academic needs the chart or diagram image.';

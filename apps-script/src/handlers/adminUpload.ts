@@ -3,7 +3,8 @@
 import { LIMITS, TASK_TYPES, type TaskType } from '../../../shared/constants';
 import { checkImage } from '../../../shared/image';
 import { countWords } from '../../../shared/wordCount';
-import { adminTimezone, bool, type Ctx } from '../context';
+import { categoryColumns, readCategory } from '../category';
+import { adminTimezone, type Ctx } from '../context';
 import { saveUploadedImage } from '../drive';
 import type { ActionDef } from '../router';
 import { Reader } from '../validate';
@@ -36,14 +37,11 @@ function createEssay(ctx: Ctx, payload: unknown) {
     r.addError('studentId', 'Student not found');
   }
   const taskType = r.oneOf('taskType', TASK_TYPES) as TaskType;
-  const topicId = r.id('topicId');
+  const category = readCategory(ctx, r, taskType, { activeTopicsOnly: true });
   const prompt = r.str('prompt', { max: LIMITS.prompt, min: 10 });
   const body = r.str('body', { max: LIMITS.body, trim: false });
   const testDate = r.date('testDate', true);
   if (body && countWords(body) === 0) r.addError('body', 'The essay is empty');
-  if (topicId && !ctx.db.findOne('Topics', (t) => t.id === topicId && bool(t.active))) {
-    r.addError('topicId', 'Choose a topic from the list');
-  }
   const imageR = r.object('image', true);
   let image: { base64: string; mimeType: string; name: string } | null = null;
   if (imageR) {
@@ -91,7 +89,7 @@ function createEssay(ctx: Ctx, payload: unknown) {
     over_time: false,
     paste_attempts: 0,
     task_type: taskType,
-    topic_id: topicId,
+    ...categoryColumns(category),
     prompt,
     body,
     word_count: countWords(body),

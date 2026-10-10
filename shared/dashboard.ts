@@ -1,6 +1,6 @@
 // Pure dashboard computations (band over time, criterion averages, top errors,
 // progress highlights, essays per week, topics covered). Unit tested.
-import { CRITERIA, type Criterion } from './constants';
+import { CRITERIA, type Criterion, DIAGRAM_TYPES, ESSAY_TYPES } from './constants';
 import { weekStart } from './dates';
 
 export interface DashError {
@@ -16,7 +16,10 @@ export interface DashEssay {
   taskType: string;
   mode: string;
   topicId: string;
+  /** Display label: diagram type (Task 1) or "Topic · Essay type" (Task 2). */
   topic: string;
+  diagramType?: string;
+  essayType?: string;
   submittedAt: string;
   scoredAt: string;
   wordCount: number;
@@ -271,5 +274,12 @@ export function topicsCovered(
     }));
   const attempted = new Set(rows.map((r) => r.topicId));
   const notAttempted = topics.filter((t) => t.seeded && !attempted.has(t.id)).map((t) => t.label);
-  return { rows, notAttempted };
+  const diagrams = new Set(essays.filter((e) => e.submittedAt).map((e) => e.diagramType));
+  const essayTypes = new Set(essays.filter((e) => e.submittedAt).map((e) => e.essayType));
+  return {
+    rows,
+    notAttempted,
+    diagramTypesNotAttempted: DIAGRAM_TYPES.filter((d) => !diagrams.has(d.id)).map((d) => d.label),
+    essayTypesNotAttempted: ESSAY_TYPES.filter((d) => !essayTypes.has(d.id)).map((d) => d.label),
+  };
 }

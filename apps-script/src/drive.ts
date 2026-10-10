@@ -2,7 +2,9 @@
 import { TASK_TYPE_LABELS, type TaskType } from '../../shared/constants';
 import { localDateString } from '../../shared/dates';
 import { essayFolderName, uniqueName } from '../../shared/folderName';
-import { adminTimezone, type Ctx, type EssayRow, topicLabel } from './context';
+import { essayTypeLabel } from '../../shared/constants';
+import { folderSubject } from './category';
+import { adminTimezone, type Ctx, type EssayRow } from './context';
 
 const UPLOADS_FOLDER = '_uploads';
 
@@ -27,7 +29,7 @@ export function expectedFolderName(ctx: Ctx, essay: EssayRow): string {
   return essayFolderName({
     studentName: student?.name ?? 'Student',
     taskType: essay.task_type as TaskType,
-    topic: topicLabel(ctx, essay.topic_id),
+    topic: folderSubject(ctx, essay),
     date: localDateString(submitted, adminTimezone(ctx), ctx.svc.tzOffsetMinutes),
     rewrite: Boolean(essay.parent_essay_id),
   });
@@ -78,7 +80,9 @@ export function archiveEssay(ctx: Ctx, essayId: string): 'ok' | 'failed' {
     }
     drive.createDoc(folderId, `Essay - ${TASK_TYPE_LABELS[essay.task_type as TaskType]}`, [
       `Task type: ${TASK_TYPE_LABELS[essay.task_type as TaskType]}`,
-      `Topic: ${topicLabel(ctx, essay.topic_id)}`,
+      essay.task_type === 'task1_academic'
+        ? `Diagram type: ${folderSubject(ctx, essay)}`
+        : `Topic: ${folderSubject(ctx, essay)} · Essay type: ${essayTypeLabel(essay.essay_type) || '–'}`,
       `Mode: ${essay.mode}`,
       `Submitted: ${essay.submitted_at}`,
       `Word count: ${essay.word_count}`,

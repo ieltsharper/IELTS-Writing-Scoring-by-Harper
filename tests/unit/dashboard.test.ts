@@ -229,6 +229,9 @@ describe('dashboard and calibration update after a score is submitted', () => {
     const student = app.login('demo.an@example.com');
     const dash = app.call('dashboard.get', {}, student);
     expect(dash.rewrites).toHaveLength(1);
-    expect(dash.rewrites[0]).toMatchObject({ status: 'requested', topic: 'Education' });
+    expect(dash.rewrites[0]).toMatchObject({
+      status: 'requested',
+      topic: 'Education · Discussion',
+    });
   });
 });

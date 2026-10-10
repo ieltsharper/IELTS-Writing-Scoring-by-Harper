@@ -13,6 +13,8 @@ import {
   criterionLabel,
   type Criterion,
   CRITERION_SHORT,
+  diagramTypeLabel,
+  essayTypeLabel,
 } from '../../../shared/constants';
 import { findExcerpt } from '../../../shared/excerpt';
 import { countWords } from '../../../shared/wordCount';
@@ -34,6 +36,7 @@ import {
   table,
   toast,
 } from '../../ui/components';
+import { type CategoryValues, categoryFields } from '../../ui/categoryFields';
 import { copyText } from '../../ui/clipboard';
 import { essayText, selectionOffsets } from '../../ui/essayText';
 import { formatBand, formatDateTime, modeLabel, signed, taskLabel } from '../../ui/format';
@@ -58,7 +61,7 @@ interface FormState {
   scores: Record<Criterion, number | null>;
   feedback: Record<Criterion, string>;
   generalComment: string;
-  topicId: string;
+  category: CategoryValues;
   errors: FormError[];
   rewrite: { required: boolean; dueDate: string; note: string };
   notifyAgain: boolean;
@@ -138,7 +141,11 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
       CRITERIA.map((c) => [c, essay.score?.feedback[c] ?? '']),
     ) as Record<Criterion, string>,
     generalComment: essay.score?.generalComment ?? '',
-    topicId: essay.topicId,
+    category: {
+      topicId: essay.topicId,
+      diagramType: essay.diagramType ?? '',
+      essayType: essay.essayType ?? '',
+    },
     errors: essay.errors.map((e) => ({
       key: e.id,
       categoryId: e.categoryId,
@@ -329,25 +336,25 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
   };
 
   const renderTopic = () => {
-    const sel = selectEl(
-      'topicId',
-      data.topics
-        .filter((t) => t.active || t.id === state.topicId)
-        .map((t) => ({ value: t.id, label: t.label })),
-      state.topicId,
+    const fields = categoryFields(
+      data.topics.filter((t) => t.active || t.id === state.category.topicId),
+      state.category,
     );
-    sel.addEventListener('change', () => {
-      state.topicId = sel.value;
+    fields.setTaskType(taskType);
+    fields.onChange(() => {
+      state.category = { ...state.category, ...fields.values() };
       dirty = true;
     });
     replace(
       topicBox,
-      field({
-        label: 'Topic',
-        control: sel,
-        name: 'topicId',
-        hint: 'Changing the topic renames the Drive folder.',
-      }),
+      h('div', { class: 'grid-2' }, ...fields.fields),
+      h(
+        'p',
+        { class: 'hint' },
+        taskType === 'task1_academic'
+          ? 'Changing the diagram type renames the Drive folder.'
+          : 'Changing the topic renames the Drive folder.',
+      ),
     );
   };
 
@@ -619,7 +626,9 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
     buildClaudePrompt({
       taskType,
       prompt: essay.prompt,
-      topic: data.topics.find((t) => t.id === state.topicId)?.label ?? essay.topic,
+      topic: data.topics.find((t) => t.id === state.category.topicId)?.label ?? essay.topic,
+      diagramType: diagramTypeLabel(state.category.diagramType),
+      essayType: essayTypeLabel(state.category.essayType),
       wordCount: countWords(essay.body),
       body: essay.body,
       recurringErrors: data.recurringErrors,
@@ -641,6 +650,10 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
 
   const validate = (forSubmit: boolean): string[] => {
     const problems: string[] = [];
+    if (taskType === 'task1_academic' && !state.category.diagramType)
+      problems.push('Choose the diagram type.');
+    if (taskType === 'task2' && (!state.category.topicId || !state.category.essayType))
+      problems.push('Choose the topic and the essay type.');
     if (forSubmit && CRITERIA.some((c) => state.scores[c] === null))
       problems.push('Enter all four criterion scores.');
     if (state.errors.some((e) => !e.categoryId))
@@ -657,7 +670,7 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
     scores: state.scores,
     feedback: state.feedback,
     generalComment: state.generalComment,
-    topicId: state.topicId,
+    ...state.category,
     errors: state.errors.map((e) => ({
       categoryId: e.categoryId,
       excerpt: e.excerpt,
@@ -823,11 +836,15 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
       state.scores = { ...draft.scores };
       state.feedback = { ...draft.feedback };
       state.generalComment = draft.generalComment;
-      const topic = matchTopic(
-        draft.suggestedTopic,
-        data.topics.filter((t) => t.active),
-      );
-      if (topic) state.topicId = topic;
+      // Task 1 Academic has no topic; only Task 2 takes Claude's suggested topic.
+      const topic =
+        taskType === 'task2'
+          ? matchTopic(
+              draft.suggestedTopic,
+              data.topics.filter((t) => t.active),
+            )
+          : null;
+      if (topic) state.category = { ...state.category, topicId: topic };
       state.errors = matched.map((m) => ({
         key: newKey(),
         categoryId: m.categoryId,
@@ -855,7 +872,7 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
           unplaced
             ? h('p', null, `${unplaced} excerpt(s) were not found exactly: place or delete them.`)
             : null,
-          draft.suggestedTopic && !topic
+          taskType === 'task2' && draft.suggestedTopic && !topic
             ? h(
                 'p',
                 null,

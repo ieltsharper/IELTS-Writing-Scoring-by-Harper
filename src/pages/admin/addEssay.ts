@@ -18,6 +18,7 @@ import {
   showFieldErrors,
   toast,
 } from '../../ui/components';
+import { categoryFields } from '../../ui/categoryFields';
 import { readEssayFile } from '../../ui/docx';
 import { type PickedImage, readImageFile } from '../../ui/image';
 
@@ -110,12 +111,7 @@ export function addEssayPage(): Node {
           Object.entries(TASK_TYPE_LABELS).map(([value, label]) => ({ value, label })),
           'task2',
         );
-        const topicSel = selectEl(
-          'topicId',
-          config.topics.map((t) => ({ value: t.id, label: t.label })),
-          '',
-          'Choose a topic',
-        );
+        const category = categoryFields(config.topics);
         const prompt = h('textarea', { name: 'prompt', rows: '4', maxlength: '4000' });
         const imageInput = h('input', {
           type: 'file',
@@ -145,6 +141,7 @@ export function addEssayPage(): Node {
         };
         const syncTask = () => {
           imageField.hidden = taskSel.value !== 'task1_academic';
+          category.setTaskType(taskSel.value);
           updateWords();
         };
         taskSel.addEventListener('change', syncTask);
@@ -217,9 +214,9 @@ export function addEssayPage(): Node {
           newStudentBox,
           h(
             'div',
-            { class: 'grid-2' },
+            { class: 'grid-3' },
             field({ label: 'Task type', control: taskSel, name: 'taskType' }),
-            field({ label: 'Topic', control: topicSel, name: 'topicId' }),
+            ...category.fields,
           ),
           field({ label: 'Task prompt', control: prompt, name: 'prompt' }),
           imageField,
@@ -247,7 +244,7 @@ export function addEssayPage(): Node {
           if (!studentSel.value) errors.studentId = 'Choose a student or add a new one';
           if (isNew && newName.value.trim().length < 2)
             errors['newStudent.name'] = 'Enter the student’s name';
-          if (!topicSel.value) errors.topicId = 'Choose a topic';
+          Object.assign(errors, category.errors());
           if (prompt.value.trim().length < 10) errors.prompt = 'Enter the task prompt';
           if (!body.value.trim()) errors.body = 'Paste the essay or load it from a file';
           if (taskSel.value === 'task1_academic' && !image)
@@ -269,7 +266,7 @@ export function addEssayPage(): Node {
                       }
                     : undefined,
                   taskType: taskSel.value,
-                  topicId: topicSel.value,
+                  ...category.values(),
                   prompt: prompt.value,
                   body: body.value,
                   testDate: testDate.value || undefined,

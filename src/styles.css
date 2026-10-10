@@ -945,3 +945,12 @@ pre.plain-text {
     flex-direction: column;
   }
 }
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+}

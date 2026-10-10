@@ -13,12 +13,25 @@ function prepare() {
   const admin = app.login('admin@example.com');
   const d = app.call(
     'essays.saveDraft',
-    { taskType: 'task2', topicId: topic('Technology'), prompt: 'Discuss.', body: BODY },
+    {
+      taskType: 'task2',
+      topicId: topic('Technology'),
+      essayType: 'discussion',
+      prompt: 'Discuss.',
+      body: BODY,
+    },
     student,
   );
   app.call(
     'essays.submit',
-    { id: d.id, taskType: 'task2', topicId: topic('Technology'), prompt: 'Discuss.', body: BODY },
+    {
+      id: d.id,
+      taskType: 'task2',
+      topicId: topic('Technology'),
+      essayType: 'discussion',
+      prompt: 'Discuss.',
+      body: BODY,
+    },
     student,
   );
   const cats = app.db().all('ErrorCategories');

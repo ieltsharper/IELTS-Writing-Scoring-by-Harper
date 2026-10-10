@@ -176,7 +176,7 @@ Scoring one essay:
 
 To score an essay that did not come through the website (written on paper, sent by message…), open the **Queue**
 and press **Add an essay**. Choose the student, or **+ New student…** (name, optional email, class). Paste the text
-or load a **.txt / .docx** file, fill in the task type, topic and prompt (and the chart image for Task 1), then press
+or load a **.txt / .docx** file, fill in the task type, then the diagram type (Task 1) or the topic and essay type (Task 2), the prompt (and the chart image for Task 1), then press
 **Add and score now**. The essay gets a Drive folder and joins the queue tagged "Uploaded by teacher"; it does not
 count toward the student's daily limit. Students added without an email cannot log in and never get emails; if you
 give an email, they can sign up or log in with it later and see their essays.

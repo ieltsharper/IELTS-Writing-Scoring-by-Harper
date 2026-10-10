@@ -20,6 +20,7 @@ import {
   toast,
 } from '../../ui/components';
 import { ASSIGNMENT_STATUS_LABELS, formatBand, formatDateTime, taskLabel } from '../../ui/format';
+import { categoryFields } from '../../ui/categoryFields';
 import { type PickedImage, readImageFile, remoteImage } from '../../ui/image';
 import type { ScoreView } from '../../types';
 
@@ -90,12 +91,7 @@ export function newAssignmentPage(): Node {
           Object.entries(TASK_TYPE_LABELS).map(([value, label]) => ({ value, label })),
           'task2',
         );
-        const topicSel = selectEl(
-          'topicId',
-          config.topics.map((t) => ({ value: t.id, label: t.label })),
-          '',
-          'Choose a topic',
-        );
+        const category = categoryFields(config.topics);
         const prompt = h('textarea', { name: 'prompt', rows: '5', maxlength: '4000' });
         const file = h('input', { type: 'file', name: 'image', accept: 'image/png,image/jpeg' });
         const imageField = field({
@@ -148,6 +144,7 @@ export function newAssignmentPage(): Node {
         );
         const sync = () => {
           imageField.hidden = taskSel.value !== 'task1_academic';
+          category.setTaskType(taskSel.value);
           minutes.value = String(TIME_LIMITS[taskSel.value as TaskType]);
         };
         taskSel.addEventListener('change', sync);
@@ -168,9 +165,9 @@ export function newAssignmentPage(): Node {
           field({ label: 'Title', control: title, name: 'title' }),
           h(
             'div',
-            { class: 'grid-2' },
+            { class: 'grid-3' },
             field({ label: 'Task type', control: taskSel, name: 'taskType' }),
-            field({ label: 'Topic', control: topicSel, name: 'topicId' }),
+            ...category.fields,
           ),
           field({
             label: 'Prompt (hidden from students until they press Start test)',
@@ -220,7 +217,7 @@ export function newAssignmentPage(): Node {
                 {
                   title: title.value,
                   taskType: taskSel.value,
-                  topicId: topicSel.value,
+                  ...category.values(),
                   prompt: prompt.value,
                   image: taskSel.value === 'task1_academic' ? (image ?? undefined) : undefined,
                   classIds: classBoxes.filter((c) => c.box.checked).map((c) => c.box.value),

@@ -27,6 +27,7 @@ describe('admin adds an essay', () => {
         studentId: binh.id,
         taskType: 'task2',
         topicId: topic('Transport'),
+        essayType: 'discussion',
         prompt: 'Discuss public transport.',
         body: BODY,
         testDate: '2026-10-01',
@@ -64,6 +65,7 @@ describe('admin adds an essay', () => {
           studentId: binh.id,
           taskType: 'task2',
           topicId: topic('Media'),
+          essayType: 'discussion',
           prompt: 'Discuss the media.',
           body: BODY,
         },
@@ -71,7 +73,13 @@ describe('admin adds an essay', () => {
       );
     }
     const student = app.login('demo.binh@example.com');
-    const base = { taskType: 'task2', topicId: topic('Media'), prompt: 'Discuss.', body: BODY };
+    const base = {
+      taskType: 'task2',
+      topicId: topic('Media'),
+      essayType: 'discussion',
+      prompt: 'Discuss.',
+      body: BODY,
+    };
     const d = app.call('essays.saveDraft', base, student);
     expect(app.call('essays.submit', { id: d.id, ...base }, student).essay.status).toBe('pending');
   });
@@ -83,7 +91,7 @@ describe('admin adds an essay', () => {
       {
         newStudent: { name: 'Le Van Paper', classId: config.classes[0].id },
         taskType: 'task1_academic',
-        topicId: topic('Environment'),
+        diagramType: 'static',
         prompt: 'The chart shows recycling rates.',
         body: BODY,
         image: { base64: PNG, mimeType: 'image/png', name: 'chart.png' },
@@ -125,7 +133,7 @@ describe('admin adds an essay', () => {
     const { app, admin, topic } = setup();
     const res = app.raw(
       'admin.essays.create',
-      { taskType: 'task1_academic', topicId: topic('Health'), prompt: 'short', body: '' },
+      { taskType: 'task1_academic', diagramType: 'static', prompt: 'short', body: '' },
       admin,
     );
     expect(res.ok).toBe(false);
@@ -139,6 +147,7 @@ describe('admin adds an essay', () => {
         newStudent: { name: 'Copy', email: 'demo.an@example.com' },
         taskType: 'task2',
         topicId: topic('Health'),
+        essayType: 'discussion',
         prompt: 'Discuss health.',
         body: BODY,
       },
@@ -157,6 +166,7 @@ describe('admin adds an essay', () => {
           studentId: anId,
           taskType: 'task2',
           topicId: topic('Health'),
+          essayType: 'discussion',
           prompt: 'Discuss health.',
           body: BODY,
         },

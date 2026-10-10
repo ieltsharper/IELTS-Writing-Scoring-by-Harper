@@ -22,6 +22,7 @@ describe('student essay flow', () => {
       {
         taskType: 'task2',
         topicId: topic('Education'),
+        essayType: 'discussion',
         prompt: 'Discuss both views.',
         body: 'Hello',
       },
@@ -34,6 +35,7 @@ describe('student essay flow', () => {
         id: draft.id,
         taskType: 'task2',
         topicId: topic('Education'),
+        essayType: 'discussion',
         prompt: 'Discuss both views.',
         body: essayText(260),
       },
@@ -52,7 +54,13 @@ describe('student essay flow', () => {
     expect(() =>
       app.call(
         'essays.saveDraft',
-        { id: draft.id, taskType: 'task2', topicId: topic('Education'), body: 'x' },
+        {
+          id: draft.id,
+          taskType: 'task2',
+          topicId: topic('Education'),
+          essayType: 'discussion',
+          body: 'x',
+        },
         student,
       ),
     ).toThrow(/locked/);
@@ -62,7 +70,7 @@ describe('student essay flow', () => {
     const { app, topic, student } = setup();
     const base = {
       taskType: 'task1_academic',
-      topicId: topic('Environment'),
+      diagramType: 'static',
       prompt: 'The chart shows…',
       body: essayText(160),
     };
@@ -85,7 +93,7 @@ describe('student essay flow', () => {
       'image/png',
     ]);
     expect(app.svc.drive.folders.get(essay.drive_folder_id)!.name).toBe(
-      'Tran Thi Binh - Task 1 Academic - Environment - 2026-10-10',
+      'Tran Thi Binh - Task 1 Academic - Static - 2026-10-10',
     );
     // Image can be read back after an access check.
     expect(app.call('essays.image', { essayId: d.id }, student).base64).toBe(PNG);
@@ -97,7 +105,7 @@ describe('student essay flow', () => {
     const { app, topic, student } = setup();
     const base = {
       taskType: 'task1_academic',
-      topicId: topic('Environment'),
+      diagramType: 'static',
       prompt: 'p',
       body: 'b',
     };
@@ -123,6 +131,7 @@ describe('student essay flow', () => {
     const base = {
       taskType: 'task2',
       topicId: topic('Crime'),
+      essayType: 'discussion',
       prompt: 'Discuss.',
       body: essayText(255),
     };
@@ -140,6 +149,7 @@ describe('student essay flow', () => {
     const base = {
       taskType: 'task2',
       topicId: topic('Media'),
+      essayType: 'discussion',
       prompt: 'Discuss.',
       body: essayText(255),
     };
@@ -165,6 +175,7 @@ describe('student essay flow', () => {
     const base = {
       taskType: 'task2',
       topicId: topic('Health'),
+      essayType: 'discussion',
       prompt: 'Discuss.',
       body: essayText(255),
     };
@@ -179,7 +190,12 @@ describe('student essay flow', () => {
     const { app, topic, student } = setup();
     const t = app.call(
       'essays.startTest',
-      { taskType: 'task2', topicId: topic('Work'), prompt: 'Some people think…' },
+      {
+        taskType: 'task2',
+        topicId: topic('Work'),
+        essayType: 'discussion',
+        prompt: 'Some people think…',
+      },
       student,
     );
     expect(t.mode).toBe('test');
@@ -202,7 +218,12 @@ describe('student essay flow', () => {
     const { app, topic, student } = setup();
     const t = app.call(
       'essays.startTest',
-      { taskType: 'task2', topicId: topic('Work'), prompt: 'Some people think…' },
+      {
+        taskType: 'task2',
+        topicId: topic('Work'),
+        essayType: 'discussion',
+        prompt: 'Some people think…',
+      },
       student,
     );
     app.svc.advance(41 * 60000);

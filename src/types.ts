@@ -48,7 +48,11 @@ export interface EssaySummary {
   mode: Mode;
   taskType: TaskType;
   topicId: string;
+  /** Display label: diagram type (Task 1) or "Topic · Essay type" (Task 2). */
   topic: string;
+  topicName?: string;
+  diagramType?: string;
+  essayType?: string;
   promptPreview: string;
   wordCount: number;
   status: 'draft' | 'pending' | 'in_review' | 'scored';

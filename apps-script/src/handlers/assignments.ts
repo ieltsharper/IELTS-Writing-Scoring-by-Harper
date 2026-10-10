@@ -9,6 +9,7 @@ import {
 } from '../../../shared/constants';
 import type { AuthUser } from '../auth';
 import { authorize } from '../authorize';
+import { categoryColumns, readCategory } from '../category';
 import { ApiError, appUrl, bool, type Ctx, type EssayRow, num, parseJson } from '../context';
 import { saveUploadedImage } from '../drive';
 import { sendEmail } from '../email';
@@ -126,6 +127,8 @@ function start(ctx: Ctx, payload: unknown, user: AuthUser) {
     paste_attempts: 0,
     task_type: a.task_type,
     topic_id: a.topic_id,
+    diagram_type: a.diagram_type,
+    essay_type: a.essay_type,
     prompt: a.prompt,
     body: '',
     word_count: 0,
@@ -140,7 +143,7 @@ function create(ctx: Ctx, payload: unknown) {
   const r = new Reader(payload);
   const title = r.str('title', { max: LIMITS.title, min: 3 });
   const taskType = r.oneOf('taskType', TASK_TYPES) as TaskType;
-  const topicId = r.id('topicId');
+  const category = readCategory(ctx, r, taskType, { activeTopicsOnly: false });
   const prompt = r.str('prompt', { max: LIMITS.prompt, min: 10 });
   const classes = r.ids('classIds');
   const students = r.ids('studentIds');
@@ -160,7 +163,6 @@ function create(ctx: Ctx, payload: unknown) {
     const problem = image.base64 && image.mimeType ? checkImage(image) : null;
     if (problem) r.addError('image', problem);
   }
-  if (topicId && !ctx.db.byId('Topics', topicId)) r.addError('topicId', 'Unknown topic');
   if (classes.length === 0 && students.length === 0) {
     r.addError('classIds', 'Choose at least one class or student');
   }
@@ -180,7 +182,7 @@ function create(ctx: Ctx, payload: unknown) {
     id: ctx.svc.uuid(),
     title,
     task_type: taskType,
-    topic_id: topicId,
+    ...categoryColumns(category),
     prompt,
     image_file_id: imageId,
     class_ids: JSON.stringify(classes),
@@ -268,6 +270,8 @@ function adminGet(ctx: Ctx, payload: unknown) {
     title: a.title,
     taskType: a.task_type,
     topicId: a.topic_id,
+    diagramType: a.diagram_type,
+    essayType: a.essay_type,
     prompt: a.prompt,
     hasImage: Boolean(a.image_file_id),
     classIds: classIds(a),

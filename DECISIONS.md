@@ -118,6 +118,19 @@ No service in the spec was replaced; everything runs on GitHub Pages, Apps Scrip
 - **.docx import happens in the browser** with a small ZIP reader and the built-in `DecompressionStream`, so no
   library is added. Old binary `.doc` files are refused with a hint to save as .docx.
 
+## Diagram type and essay type
+
+- **Task 1 Academic is classified by diagram type** (Dynamic, Static, Process, Map, Mixed) **instead of topic**;
+  **Task 2 has a topic and an essay type** (Agree or disagree, Discussion, Pros & Cons, R.E.S, 2-part question).
+  Stored in new `diagram_type` / `essay_type` columns on Essays and Assignments (`setup()` adds them).
+- The lists are fixed in `shared/constants.ts` (not editable in the app) because the categories are part of the IELTS
+  task design rather than the teacher's own list.
+- Display label: the diagram type for Task 1 ("Process"), "Topic · Essay type" for Task 2. The Drive folder name keeps
+  the spec's format, using the diagram type in place of the topic for Task 1.
+- Older essays saved with only a topic keep working (shown by topic). When scoring, fields that are not sent keep
+  their current value, so an older essay can still be scored; the scoring page asks for the missing type.
+- "Topics I've written" also lists Task 2 essay types and Task 1 diagram types not yet attempted.
+
 ## Accessibility
 
 - Every field has a label; errors are announced and the first invalid field is focused; dialogs return focus.

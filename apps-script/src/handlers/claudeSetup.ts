@@ -7,7 +7,8 @@ import {
   TASK_TYPE_LABELS,
   type TaskType,
 } from '../../../shared/constants';
-import { bool, type Ctx, topicLabel } from '../context';
+import { essayLabel } from '../category';
+import { bool, type Ctx } from '../context';
 import type { ActionDef } from '../router';
 import { errorsView, scoreView } from '../views';
 
@@ -37,7 +38,7 @@ export function samplesExport(ctx: Ctx): string {
     parts.push(
       `===== SAMPLE ${i + 1} =====`,
       `Task type: ${TASK_TYPE_LABELS[taskType]}`,
-      `Topic: ${topicLabel(ctx, e.topic_id)}`,
+      `${taskType === 'task1_academic' ? 'Diagram type' : 'Topic and essay type'}: ${essayLabel(ctx, e)}`,
       `Prompt: ${e.prompt}`,
       '',
       'Essay:',

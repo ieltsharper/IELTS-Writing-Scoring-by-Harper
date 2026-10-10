@@ -10,7 +10,8 @@ import {
 } from '../../shared/constants';
 import { formatForEmail, assignmentNoticeJob } from './handlers/assignments';
 import { loginJob } from './auth';
-import { appUrl, type Ctx, type EssayRow, topicLabel } from './context';
+import { essayLabel } from './category';
+import { appUrl, type Ctx, type EssayRow } from './context';
 import { type EmailJob, type EmailType, parseEmailKey } from './email';
 import { resultEmail, rewriteReminderEmail } from './emailTemplates';
 import type { Row } from './schema';
@@ -74,7 +75,7 @@ export function resultJob(
         to: student.email,
         name: student.name,
         taskTypeLabel: TASK_TYPE_LABELS[taskType],
-        topic: topicLabel(ctx, essay.topic_id),
+        topic: essayLabel(ctx, essay),
         modeLabel: MODE_LABELS[essay.mode as Mode] ?? essay.mode,
         overall: score.overall,
         criteria: CRITERIA.map((c) => ({
@@ -110,7 +111,7 @@ export function rewriteJob(
       rewriteReminderEmail({
         to: student.email,
         name: student.name,
-        topic: topicLabel(ctx, essay.topic_id),
+        topic: essayLabel(ctx, essay),
         due: formatForEmail(ctx, rr.due_at, student.timezone),
         overdue: type === 'rewrite_overdue',
         url: appUrl(ctx, `/essays/${essay.id}`),

@@ -20,6 +20,7 @@ test('admin adds an essay from a file for a new student', async ({ page }) => {
   await page.getByLabel('Full name').fill('Pham Paper Student');
   await page.getByLabel('Task type').selectOption('task2');
   await page.getByLabel('Topic').selectOption({ label: 'Crime' });
+  await page.getByLabel('Essay type').selectOption({ label: 'Discussion' });
   await page
     .getByLabel('Task prompt')
     .fill('Some people think prison is the best punishment. Discuss.');

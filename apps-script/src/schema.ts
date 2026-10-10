@@ -44,6 +44,10 @@ export const SCHEMA = {
     'test_date',
     /** 'admin' when the teacher added the essay; empty for student submissions. */
     'source',
+    /** Task 1 Academic: dynamic, static, process, map or mixed. */
+    'diagram_type',
+    /** Task 2: agree_disagree, discussion, pros_cons, res or two_part. */
+    'essay_type',
   ],
   Assignments: [
     'id',
@@ -59,6 +63,8 @@ export const SCHEMA = {
     'time_limit_minutes',
     'email_students',
     'created_at',
+    'diagram_type',
+    'essay_type',
   ],
   Drafts: ['id', 'essay_id', 'kind', 'raw_text', 'parsed_json', 'created_at'],
   FeedbackSources: ['id', 'name', 'active'],

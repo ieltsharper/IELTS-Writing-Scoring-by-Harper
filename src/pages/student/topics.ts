@@ -15,6 +15,17 @@ export interface TopicHistory {
     overall: number | null;
   }>;
   notAttempted: string[];
+  diagramTypesNotAttempted?: string[];
+  essayTypesNotAttempted?: string[];
+}
+
+function gapList(title: string, items: string[] | undefined, done: string): HTMLElement[] {
+  return [
+    h('h2', null, title),
+    items && items.length
+      ? h('ul', { class: 'tag-list' }, ...items.map((t) => h('li', null, badge(t, 'warning'))))
+      : h('p', null, done),
+  ];
 }
 
 export function topicHistoryView(
@@ -26,7 +37,7 @@ export function topicHistoryView(
     null,
     data.rows.length
       ? table(
-          ['Topic', 'Task type', 'Mode', 'Date', 'Overall', ''],
+          ['Topic / type', 'Task type', 'Mode', 'Date', 'Overall', ''],
           data.rows.map((r) => [
             r.topic,
             taskLabel(r.taskType),
@@ -38,14 +49,21 @@ export function topicHistoryView(
           'Submitted essays by topic, newest first',
         )
       : empty('No submitted essays yet.'),
-    h('h2', null, 'Topics not yet attempted'),
-    data.notAttempted.length
-      ? h(
-          'ul',
-          { class: 'tag-list' },
-          ...data.notAttempted.map((t) => h('li', null, badge(t, 'warning'))),
-        )
-      : h('p', null, 'You have written about every topic. Great coverage!'),
+    ...gapList(
+      'Task 2 topics not yet attempted',
+      data.notAttempted,
+      'You have written about every topic. Great coverage!',
+    ),
+    ...gapList(
+      'Task 2 essay types not yet attempted',
+      data.essayTypesNotAttempted,
+      'You have tried every essay type.',
+    ),
+    ...gapList(
+      'Task 1 diagram types not yet attempted',
+      data.diagramTypesNotAttempted,
+      'You have tried every diagram type.',
+    ),
   );
 }
 

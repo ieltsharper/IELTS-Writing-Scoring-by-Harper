@@ -171,6 +171,8 @@ interface DemoEssay {
   student: 'an' | 'binh';
   taskType: TaskType;
   topic: string;
+  diagramType?: string;
+  essayType?: string;
   mode: 'practice' | 'test';
   prompt: string;
   body: string;
@@ -223,6 +225,7 @@ function seedDemo(ctx: Ctx): void {
       student: 'an',
       taskType: 'task2',
       topic: 'Education',
+      essayType: 'discussion',
       mode: 'practice',
       prompt:
         'Some people think university education should be free for everyone. Others believe students should pay. Discuss both views and give your opinion.',
@@ -256,6 +259,7 @@ function seedDemo(ctx: Ctx): void {
       student: 'an',
       taskType: 'task2',
       topic: 'Technology',
+      essayType: 'pros_cons',
       mode: 'test',
       prompt:
         'Technology has changed the way people communicate. Do the advantages of this development outweigh the disadvantages?',
@@ -281,6 +285,7 @@ function seedDemo(ctx: Ctx): void {
       student: 'an',
       taskType: 'task1_academic',
       topic: 'Environment',
+      diagramType: 'dynamic',
       mode: 'practice',
       prompt:
         'The bar chart shows the percentage of waste recycled in four countries in 2010 and 2020. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.',
@@ -292,6 +297,7 @@ function seedDemo(ctx: Ctx): void {
       student: 'binh',
       taskType: 'task2',
       topic: 'Health',
+      essayType: 'res',
       mode: 'practice',
       prompt:
         'The number of overweight people is increasing in many countries. What are the causes of this problem and what measures can be taken?',
@@ -312,6 +318,7 @@ function seedDemo(ctx: Ctx): void {
       student: 'binh',
       taskType: 'task1_academic',
       topic: 'Transport',
+      diagramType: 'dynamic',
       mode: 'test',
       prompt:
         'The line graph shows the number of passengers using three types of public transport in a city from 2000 to 2020. Summarise the information by selecting and reporting the main features.',
@@ -332,6 +339,7 @@ function seedDemo(ctx: Ctx): void {
       student: 'binh',
       taskType: 'task2',
       topic: 'Work',
+      essayType: 'discussion',
       mode: 'practice',
       prompt: 'Some people prefer to work for a large company, others for a small one. Discuss.',
       body: 'Many people today must choose between working for a large company and a small business.',
@@ -363,7 +371,10 @@ function seedDemo(ctx: Ctx): void {
       over_time: false,
       paste_attempts: 0,
       task_type: e.taskType,
-      topic_id: topicId(e.topic),
+      // Task 1 Academic is classified by diagram type, not topic.
+      topic_id: e.taskType === 'task2' ? topicId(e.topic) : '',
+      diagram_type: e.diagramType ?? '',
+      essay_type: e.essayType ?? '',
       prompt: e.prompt,
       body: e.body,
       word_count: countWords(e.body),

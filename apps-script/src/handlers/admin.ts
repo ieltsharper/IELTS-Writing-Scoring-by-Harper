@@ -3,7 +3,8 @@ import { overallBand } from '../../../shared/band';
 import { parseClaudeReply } from '../../../shared/claude';
 import { CRITERIA, LIMITS, TASK_TYPES } from '../../../shared/constants';
 import { calibrationFor } from '../calibration';
-import { ApiError, bool, type Ctx, type EssayRow, num, parseJson, topicLabel } from '../context';
+import { essayLabel } from '../category';
+import { ApiError, bool, type Ctx, type EssayRow, num, parseJson } from '../context';
 import { clearDashboardCache } from '../dashboardCache';
 import { MAX_CELL } from '../db';
 import { archiveEssay } from '../drive';
@@ -60,7 +61,7 @@ function queue(ctx: Ctx, payload: unknown) {
       studentName: users.get(e.student_id)?.name ?? '(deleted)',
       taskType: e.task_type,
       mode: e.mode,
-      topic: topicLabel(ctx, e.topic_id),
+      topic: essayLabel(ctx, e),
       submittedAt: e.submitted_at,
       scoredAt: e.scored_at || null,
       wordCount: num(e.word_count) ?? 0,

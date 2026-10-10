@@ -153,3 +153,52 @@ export const DEFAULT_SETTINGS: Record<string, string> = {
   admin_timezone: 'Asia/Ho_Chi_Minh',
   email_quota_reserve: '10',
 };
+
+/** Task 1 Academic is classified by diagram type instead of topic. */
+export const DIAGRAM_TYPES = [
+  { id: 'dynamic', label: 'Dynamic' },
+  { id: 'static', label: 'Static' },
+  { id: 'process', label: 'Process' },
+  { id: 'map', label: 'Map' },
+  { id: 'mixed', label: 'Mixed' },
+] as const;
+export type DiagramType = (typeof DIAGRAM_TYPES)[number]['id'];
+export const DIAGRAM_TYPE_IDS = DIAGRAM_TYPES.map((d) => d.id) as DiagramType[];
+
+/** Task 2 has a topic and an essay (question) type. */
+export const ESSAY_TYPES = [
+  { id: 'agree_disagree', label: 'Agree or disagree' },
+  { id: 'discussion', label: 'Discussion' },
+  { id: 'pros_cons', label: 'Pros & Cons' },
+  { id: 'res', label: 'R.E.S' },
+  { id: 'two_part', label: '2-part question' },
+] as const;
+export type EssayType = (typeof ESSAY_TYPES)[number]['id'];
+export const ESSAY_TYPE_IDS = ESSAY_TYPES.map((d) => d.id) as EssayType[];
+
+export function diagramTypeLabel(id: string | null | undefined): string {
+  return DIAGRAM_TYPES.find((d) => d.id === id)?.label ?? '';
+}
+
+export function essayTypeLabel(id: string | null | undefined): string {
+  return ESSAY_TYPES.find((d) => d.id === id)?.label ?? '';
+}
+
+/**
+ * Short label describing what an essay is about, used in lists, folder names
+ * and emails: the diagram type for Task 1 Academic ("Process"), the topic and
+ * essay type for Task 2 ("Education · Discussion"). Older essays saved before
+ * these fields existed fall back to their topic.
+ */
+export function essayCategoryLabel(e: {
+  taskType: string;
+  topic: string;
+  diagramType?: string;
+  essayType?: string;
+}): string {
+  if (e.taskType === 'task1_academic') {
+    return diagramTypeLabel(e.diagramType) || e.topic || 'Task 1';
+  }
+  const type = essayTypeLabel(e.essayType);
+  return [e.topic || 'Other', type].filter(Boolean).join(' · ');
+}
