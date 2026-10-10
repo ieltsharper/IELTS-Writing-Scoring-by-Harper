@@ -71,7 +71,7 @@ const drive: DriveService = {
 const mail: MailService = {
   remainingQuota: () => MailApp.getRemainingDailyQuota(),
   send: (m) => {
-    GmailApp.sendEmail(m.to, m.subject, m.text, { htmlBody: m.html, name: 'IELTS Writing' });
+    GmailApp.sendEmail(m.to, m.subject, m.text, { htmlBody: m.html, name: 'IELTS Harper' });
   },
 };
 

@@ -148,6 +148,17 @@ No service in the spec was replaced; everything runs on GitHub Pages, Apps Scrip
   sandboxed frame, plain text). Curating means going back to the form, editing, and previewing again; only
   **Send to student** saves the final score and sends the email.
 
+## Look and feel
+
+- **Name: IELTS Harper.** Used in the header, page titles, the email footer and the Gmail sender name.
+- **Bright orange (#f97316) brand.** Text on orange is near-black because white on bright orange fails WCAG contrast;
+  links, focus rings and email buttons use a deeper orange (#c2410c), which passes with white text.
+- **Criterion colours are used consistently**: red TA/TR, orange CC, blue LR, purple GRA for error highlights, feedback
+  cards, error badges and the "Average by criterion" chart.
+- The scoring page uses the full screen width with three panels; reconcile notes are collapsed by default.
+- The reconcile prompt tells Claude to answer in plain text for that message, because the Project instructions
+  otherwise require JSON.
+
 ## Accessibility
 
 - Every field has a label; errors are announced and the first invalid field is focused; dialogs return focus.

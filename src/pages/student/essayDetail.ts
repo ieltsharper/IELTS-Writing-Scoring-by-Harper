@@ -1,5 +1,10 @@
 // Essay page: final scores, feedback, tagged errors, highlighted text, rewrites.
-import { CRITERIA, criterionLabel, type TaskType } from '../../../shared/constants';
+import {
+  CRITERIA,
+  CRITERION_SHORT,
+  criterionLabel,
+  type TaskType,
+} from '../../../shared/constants';
 import { api } from '../../api';
 import { type Child, h, replace } from '../../dom';
 import type { RouteContext } from '../../router';
@@ -67,7 +72,7 @@ function errorList(errors: ErrorView[], onPick: (id: string) => void): HTMLEleme
           h('strong', null, e.category),
         ),
         ' ',
-        badge(criterionLabel(e.criterion).split(' ')[0]),
+        h('span', { class: `badge crit-badge crit-${e.criterion}` }, CRITERION_SHORT[e.criterion]),
         h(
           'div',
           null,
@@ -154,11 +159,15 @@ export function essayDetailPage(ctx: RouteContext): Node {
         sections.push(
           h(
             'div',
-            { class: 'band-hero' },
-            h('span', null, 'Overall band'),
-            h('strong', null, formatBand(essay.score.overall)),
+            { class: 'score-summary' },
+            h(
+              'div',
+              { class: 'band-hero' },
+              h('span', null, 'Overall band'),
+              h('strong', null, formatBand(essay.score.overall)),
+            ),
+            scoreTable(essay.score, essay.taskType),
           ),
-          scoreTable(essay.score, essay.taskType),
         );
       }
 
@@ -220,7 +229,7 @@ export function essayDetailPage(ctx: RouteContext): Node {
           ...CRITERIA.filter((c) => essay.score!.feedback[c]).map((c) =>
             h(
               'div',
-              { class: 'card' },
+              { class: `card criterion-card crit-${c}` },
               h('h3', null, criterionLabel(c, essay.taskType)),
               markdown(essay.score!.feedback[c]),
             ),

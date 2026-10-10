@@ -54,11 +54,15 @@ function studentView(p: PreviewContent, server: ServerPreview): HTMLElement {
     { class: 'preview-student' },
     h(
       'div',
-      { class: 'band-hero' },
-      h('span', null, 'Overall band'),
-      h('strong', null, formatBand(server.overall)),
+      { class: 'score-summary' },
+      h(
+        'div',
+        { class: 'band-hero' },
+        h('span', null, 'Overall band'),
+        h('strong', null, formatBand(server.overall)),
+      ),
+      scoreTable(score, p.taskType),
     ),
-    scoreTable(score, p.taskType),
     server.rewriteDueAt
       ? notice(
           'warning',
@@ -74,7 +78,7 @@ function studentView(p: PreviewContent, server: ServerPreview): HTMLElement {
     ...CRITERIA.map((c) =>
       h(
         'div',
-        { class: 'card' },
+        { class: `card criterion-card crit-${c}` },
         h('h4', null, criterionLabel(c, p.taskType)),
         p.feedback[c].trim()
           ? markdown(p.feedback[c])

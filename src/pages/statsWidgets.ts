@@ -193,7 +193,7 @@ export function criteriaChart(avg: DashboardStats['criterionAverages']): Child {
           {
             label: 'Average band',
             data: CRITERIA.map((c) => avg[c]),
-            backgroundColor: COLORS.palette.slice(0, 4),
+            backgroundColor: COLORS.criteria,
           },
         ],
       },

@@ -614,10 +614,9 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
       reconcileView,
       text
         ? h(
-            'div',
-            { class: 'card' },
-            h('h3', null, 'Reconcile notes'),
-            at ? h('p', { class: 'hint' }, `Saved ${formatDateTime(at)}`) : null,
+            'details',
+            { class: 'card reconcile-box' },
+            h('summary', null, 'Reconcile notes', at ? ` · saved ${formatDateTime(at)}` : ''),
             plainText(text),
           )
         : null,
@@ -964,11 +963,14 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
   );
 
   renderAll();
-  return page(
+  const pageEl = page(
     `Score: ${data.student?.name ?? 'Student'} – ${essay.topic}`,
     h('p', null, link('/admin', '← Back to the queue')),
     h('div', { class: 'scoring-layout' }, essayPanel, referencePanel, formPanel),
   );
+  // The scoring page uses the full screen width so the three panels have room.
+  pageEl.classList.add('page-wide');
+  return pageEl;
 }
 
 function apiFieldList(err: unknown): Child {

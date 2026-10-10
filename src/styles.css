@@ -1,23 +1,36 @@
+/* IELTS Harper theme. Bright orange brand; text on orange is near-black so it stays readable
+   (white on bright orange fails WCAG contrast). Links and outlines use a deeper orange. */
 :root {
-  --bg: #f6f7f9;
+  --bg: #f7f5f2;
   --surface: #ffffff;
-  --text: #111827;
-  --muted: #4b5563;
-  --border: #d1d5db;
-  --primary: #1d4ed8;
-  --primary-dark: #1e3a8a;
-  --primary-soft: #dbeafe;
+  --surface-2: #fbfaf8;
+  --text: #1c1917;
+  --muted: #57534e;
+  --border: #e7e5e4;
+  --border-strong: #d6d3d1;
+  --brand: #f97316;
+  --brand-hover: #ea580c;
+  --on-brand: #1c1917;
+  --primary: #c2410c;
+  --primary-dark: #9a3412;
+  --primary-soft: #fff7ed;
+  --primary-border: #fed7aa;
+  --info: #334155;
+  --info-soft: #f1f5f9;
+  --info-border: #cbd5e1;
   --success: #065f46;
-  --success-soft: #d1fae5;
+  --success-soft: #ecfdf5;
   --warning: #78350f;
-  --warning-soft: #fef3c7;
+  --warning-soft: #fffbeb;
   --danger: #991b1b;
-  --danger-soft: #fee2e2;
+  --danger-soft: #fef2f2;
   --mark: #fde68a;
   --mark-active: #f59e0b;
-  --focus: #f59e0b;
-  --radius: 8px;
-  --shadow: 0 1px 2px rgb(0 0 0 / 6%), 0 1px 6px rgb(0 0 0 / 4%);
+  --focus: #c2410c;
+  --radius: 12px;
+  --radius-small: 8px;
+  --shadow: 0 1px 2px rgb(28 25 23 / 4%), 0 2px 8px rgb(28 25 23 / 5%);
+  --shadow-raised: 0 4px 16px rgb(28 25 23 / 10%);
   font-family:
     system-ui,
     -apple-system,
@@ -27,7 +40,7 @@
     sans-serif;
   color: var(--text);
   background: var(--bg);
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 * {
@@ -83,37 +96,57 @@ a:hover {
 
 /* Header and navigation */
 .site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  padding: 10px 20px;
-  background: var(--primary-dark);
-  color: #fff;
+  gap: 12px 20px;
+  padding: 10px 24px;
+  background: var(--brand);
+  color: var(--on-brand);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 8%);
 }
 
 .site-header a {
-  color: #fff;
+  color: var(--on-brand);
 }
 
 .brand {
-  font-weight: 700;
-  font-size: 1.15rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 1.2rem;
+  letter-spacing: 0.01em;
   text-decoration: none;
   margin-right: auto;
+}
+
+.brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--on-brand);
+  color: var(--brand);
+  font-size: 1.05rem;
+  font-weight: 800;
 }
 
 .site-header nav {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px 16px;
   flex-wrap: wrap;
 }
 
 .site-header nav ul {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 2px;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -121,31 +154,57 @@ a:hover {
 
 .site-header nav ul a {
   display: block;
-  padding: 6px 10px;
-  border-radius: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-weight: 600;
   text-decoration: none;
 }
 
-.site-header nav ul a[aria-current='page'],
 .site-header nav ul a:hover {
-  background: rgb(255 255 255 / 18%);
+  background: rgb(255 255 255 / 30%);
+}
+
+.site-header nav ul a[aria-current='page'] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
+}
+
+.site-header > nav:not(#site-nav) a {
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: 999px;
+  text-decoration: none;
+}
+
+.site-header > nav:not(#site-nav) a:hover {
+  background: rgb(255 255 255 / 30%);
 }
 
 .user-box {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-size: 0.9rem;
+  font-weight: 600;
+  padding-left: 12px;
+  border-left: 1px solid rgb(28 25 23 / 20%);
+}
+
+.site-header .user-box .btn {
+  background: var(--surface);
+  border-color: transparent;
 }
 
 .nav-toggle {
   display: none;
-  background: transparent;
-  color: #fff;
-  border: 1px solid rgb(255 255 255 / 60%);
-  border-radius: 6px;
-  padding: 6px 10px;
+  background: var(--surface);
+  color: var(--text);
+  border: none;
+  border-radius: 999px;
+  padding: 7px 14px;
   font: inherit;
+  font-weight: 600;
 }
 
 main {
@@ -1097,4 +1156,332 @@ mark.err.active {
 .swatch-grammar {
   background: #e9d5ff;
   border-color: #7e22ce;
+}
+
+/* ===== IELTS Harper refinements: calmer spacing, softer surfaces, balanced layout ===== */
+main {
+  max-width: 1180px;
+  padding: 28px 24px 40px;
+}
+
+main:has(.page-wide) {
+  max-width: 1680px;
+}
+
+h1 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin-bottom: 20px;
+}
+
+h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.card {
+  border-color: var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  box-shadow: var(--shadow);
+}
+
+input,
+select,
+textarea {
+  border-color: var(--border-strong);
+  border-radius: var(--radius-small);
+  padding: 9px 12px;
+  background: var(--surface);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgb(249 115 22 / 25%);
+  outline: none;
+}
+
+.btn {
+  border-radius: 999px;
+  border-color: var(--border-strong);
+  padding: 8px 18px;
+  font-weight: 600;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.btn:hover {
+  background: #f5f5f4;
+  border-color: #a8a29e;
+}
+
+.btn-primary,
+.btn-primary:hover {
+  color: var(--on-brand);
+}
+
+.btn-primary {
+  background: var(--brand);
+  border-color: var(--brand);
+}
+
+.btn-primary:hover {
+  background: var(--brand-hover);
+  border-color: var(--brand-hover);
+}
+
+.btn-small {
+  padding: 4px 12px;
+}
+
+.notice {
+  border-radius: var(--radius);
+}
+
+.notice-info {
+  background: var(--info-soft);
+  border-color: var(--info-border);
+  color: var(--text);
+}
+
+.badge-info {
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+}
+
+.spinner {
+  border-color: var(--primary-border);
+  border-top-color: var(--brand);
+}
+
+.band-hero {
+  background: var(--brand);
+  color: var(--on-brand);
+  border-radius: var(--radius);
+  padding: 14px 24px;
+}
+
+.prompt-text {
+  border-left-color: var(--brand);
+  background: var(--surface-2);
+  border-radius: 0 var(--radius-small) var(--radius-small) 0;
+}
+
+.essay-text,
+.table-wrap,
+.empty,
+.stat {
+  border-radius: var(--radius);
+  border-color: var(--border);
+}
+
+.stat {
+  box-shadow: var(--shadow);
+  padding: 14px 18px;
+}
+
+.stat strong {
+  color: var(--primary-dark);
+  font-size: 1.6rem;
+}
+
+th {
+  background: var(--surface-2);
+  color: var(--muted);
+  font-weight: 700;
+}
+
+tbody tr:hover td {
+  background: #fcfbf9;
+}
+
+.overall {
+  color: var(--primary-dark);
+}
+
+/* Tabs as a segmented pill control */
+.tabs [role='tablist'] {
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  margin-bottom: 14px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.tabs [role='tab'] {
+  border: none;
+  border-radius: 10px;
+  padding: 6px 16px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.tabs [role='tab'][aria-selected='true'] {
+  background: var(--surface);
+  color: var(--text);
+  margin-bottom: 0;
+  box-shadow: 0 1px 3px rgb(28 25 23 / 15%);
+}
+
+/* Scoring page: three balanced panels */
+.scoring-layout {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.95fr) minmax(0, 1.1fr);
+  gap: 20px;
+}
+
+.scoring-layout > section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px 20px 20px;
+}
+
+.scoring-layout > section > h2:first-child {
+  margin-top: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.scoring-layout .card {
+  background: var(--surface-2);
+  box-shadow: none;
+  padding: 16px 18px;
+}
+
+.scoring-layout .essay-text {
+  background: var(--surface);
+}
+
+.reconcile-box {
+  margin-bottom: 14px;
+}
+
+.reconcile-box > summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.reconcile-box .plain-text {
+  max-height: 320px;
+  overflow: auto;
+  margin-top: 8px;
+}
+
+/* Sticky bars sit below the sticky header */
+.test-bar {
+  top: 64px;
+  border-radius: var(--radius);
+}
+
+.sticky {
+  top: 76px;
+}
+
+.dialog {
+  border-radius: var(--radius);
+}
+
+.toast {
+  border-radius: var(--radius-small);
+}
+
+.site-footer {
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+@media (max-width: 1000px) {
+  .site-header {
+    position: static;
+  }
+
+  .test-bar {
+    top: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  main {
+    padding: 18px 14px 32px;
+  }
+
+  .user-box {
+    border-left: none;
+    padding-left: 0;
+  }
+
+  .tabs [role='tablist'] {
+    border-radius: var(--radius);
+  }
+}
+
+/* Score summary: band and table side by side */
+.score-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 560px);
+  justify-content: start;
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 16px;
+}
+
+.score-summary .band-hero {
+  margin-bottom: 0;
+  min-width: 150px;
+  text-align: center;
+}
+
+.score-summary .table-wrap {
+  margin-bottom: 0;
+}
+
+/* Criterion colours (match the error highlights) */
+.criterion-card {
+  border-left-width: 5px;
+}
+.criterion-card.crit-task {
+  border-left-color: #dc2626;
+}
+.criterion-card.crit-coherence {
+  border-left-color: #ea580c;
+}
+.criterion-card.crit-lexical {
+  border-left-color: #2563eb;
+}
+.criterion-card.crit-grammar {
+  border-left-color: #9333ea;
+}
+
+.crit-badge.crit-task {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.crit-badge.crit-coherence {
+  background: #ffedd5;
+  color: #9a3412;
+}
+.crit-badge.crit-lexical {
+  background: #dbeafe;
+  color: #1e40af;
+}
+.crit-badge.crit-grammar {
+  background: #f3e8ff;
+  color: #6b21a8;
+}
+
+@media (max-width: 720px) {
+  .score-summary {
+    grid-template-columns: 1fr;
+  }
 }

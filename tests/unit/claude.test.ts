@@ -164,6 +164,8 @@ describe('Copy for Claude', () => {
     expect(text).toContain('AI4IELTS');
     expect(text).toContain('+0.60');
     expect(text).toContain('Revised suggestion');
+    // The Project instructions demand JSON; the reconcile answer must be plain text.
+    expect(text).toContain('do NOT use the JSON format');
   });
 });
 

@@ -18,7 +18,7 @@ interface Layout {
 function layout(l: Layout): MailMessage {
   const button = l.button
     ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0"><tr>
-<td bgcolor="#1d4ed8" style="border-radius:6px">
+<td bgcolor="#c2410c" style="border-radius:6px">
 <a href="${e(l.button.url)}" style="display:inline-block;padding:12px 22px;font-family:Arial,Helvetica,sans-serif;font-size:16px;color:#ffffff;text-decoration:none;font-weight:bold">${e(l.button.label)}</a>
 </td></tr></table>`
     : '';
@@ -33,7 +33,7 @@ function layout(l: Layout): MailMessage {
 <h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;color:#111827">${e(l.heading)}</h1>
 ${l.blocks.join('\n')}
 ${button}
-<p style="margin:24px 0 0;font-size:13px;color:#4b5563">IELTS Writing Practice · This email was sent by your teacher's account.</p>
+<p style="margin:24px 0 0;font-size:13px;color:#4b5563">IELTS Harper · This email was sent by your teacher's account.</p>
 </td></tr></table></td></tr></table></body></html>`;
   const text = [...l.text, ...(l.button ? ['', `${l.button.label}: ${l.button.url}`] : [])].join(
     '\n',
@@ -46,7 +46,7 @@ const p = (text: string) => `<p style="margin:0 0 12px">${e(text)}</p>`;
 export function loginEmail(to: string, name: string, url: string): MailMessage {
   return layout({
     to,
-    subject: 'Your login link for IELTS Writing Practice',
+    subject: 'Your login link for IELTS Harper',
     preheader: 'This link works once and expires in 15 minutes.',
     heading: `Hi ${name}`,
     blocks: [
@@ -104,7 +104,7 @@ export function resultEmail(d: ResultEmailData): MailMessage {
     blocks: [
       p(`Hi ${d.name},`),
       p(`${d.taskTypeLabel} · ${d.topic} · ${d.modeLabel}`),
-      `<p style="margin:0 0 12px;font-size:28px;font-weight:bold;color:#1d4ed8">Overall band ${e(formatBand(d.overall))}</p>`,
+      `<p style="margin:0 0 12px;font-size:28px;font-weight:bold;color:#c2410c">Overall band ${e(formatBand(d.overall))}</p>`,
       `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:0 0 12px">${rows}</table>`,
       d.summary ? p(d.summary) : '',
       errors,

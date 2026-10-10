@@ -348,7 +348,7 @@ Results pasted from other tools. A positive bias means the tool usually scores h
 
 ${sources || '(No tool results were pasted.)'}
 
-Please answer in plain text with three sections:
+IMPORTANT: for this message only, do NOT use the JSON format from the Project instructions. Answer in plain text (Vietnamese is fine), with three sections:
 1. Disagreements: every criterion where the sources differ by 1 band or more, after allowing for each source's bias.
 2. Argument problems: the argument issues raised in the Perplexity notes, and whether they should change the ${input.taskType === 'task2' ? 'Task Response' : 'Task Achievement'} score.
 3. Revised suggestion: your revised score for each criterion, with a one-line reason for each change.`;

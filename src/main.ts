@@ -93,7 +93,12 @@ function renderHeader() {
   });
   replace(
     header,
-    h('a', { class: 'brand', href: '#/' }, 'IELTS Writing'),
+    h(
+      'a',
+      { class: 'brand', href: '#/' },
+      h('span', { class: 'brand-mark', 'aria-hidden': 'true' }, 'H'),
+      'IELTS Harper',
+    ),
     user ? toggle : null,
     user
       ? nav
@@ -114,7 +119,7 @@ setSessionExpiredHandler(() => {
 startRouter((node, title) => {
   renderHeader();
   replace(main, node);
-  document.title = `${title} · IELTS Writing`;
+  document.title = `${title} · IELTS Harper`;
   const heading = main.querySelector<HTMLElement>('h1');
   (heading ?? main).focus({ preventScroll: false });
   window.scrollTo(0, 0);
