@@ -172,12 +172,6 @@ export function privacyPage(): Node {
         null,
         'Everything is stored in your teacher’s own Google account: a private Google Sheet and a private Google Drive folder. They are never shared publicly. Emails are sent from your teacher’s Gmail.',
       ),
-      h('h2', null, 'How AI tools are used'),
-      h(
-        'p',
-        null,
-        'To help draft feedback, your teacher may paste your essay into Claude and other AI writing tools (such as AI4IELTS, Wispace and Perplexity). These drafts are only reference material for your teacher. A human reviews every final score, and only the final score and feedback your teacher approves are shown to you.',
-      ),
       h('h2', null, 'Your choices'),
       h(
         'p',

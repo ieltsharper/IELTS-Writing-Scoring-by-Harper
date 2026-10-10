@@ -131,6 +131,12 @@ No service in the spec was replaced; everything runs on GitHub Pages, Apps Scrip
   their current value, so an older essay can still be scored; the scoring page asks for the missing type.
 - "Topics I've written" also lists Task 2 essay types and Task 1 diagram types not yet attempted.
 
+## Privacy notice
+
+- **The "How AI tools are used" section was removed from the privacy page at the teacher's request** (the spec asked
+  for it). The sign-up consent checkbox still says essays may be pasted into Claude and other AI tools and that a human
+  reviews every final score.
+
 ## Accessibility
 
 - Every field has a label; errors are announced and the first invalid field is focused; dialogs return focus.
