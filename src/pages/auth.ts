@@ -18,6 +18,12 @@ import {
 } from '../ui/components';
 import { localTimeZone } from '../ui/format';
 
+/** Log-in and sign-up pages sit in the middle of the screen. */
+function centered(section: HTMLElement): HTMLElement {
+  section.classList.add('page-centered');
+  return section;
+}
+
 export function loginPage(ctx: RouteContext): Node {
   const expired = ctx.query.get('expired')
     ? notice('warning', 'Your session has ended. Please log in again.')
@@ -46,96 +52,100 @@ export function loginPage(ctx: RouteContext): Node {
       }
     });
   });
-  return page(
-    'Log in',
-    expired,
-    h('p', null, 'There are no passwords. Enter your email and we will send you a login link.'),
-    form,
-    h('p', null, 'New here? ', link('/signup', 'Create an account'), '.'),
+  return centered(
+    page(
+      'Log in',
+      expired,
+      h('p', null, 'There are no passwords. Enter your email and we will send you a login link.'),
+      form,
+      h('p', null, 'New here? ', link('/signup', 'Create an account'), '.'),
+    ),
   );
 }
 
 export function signupPage(): Node {
-  return page(
-    'Create an account',
-    async(getConfig, (config) => {
-      const name = h('input', {
-        name: 'name',
-        autocomplete: 'name',
-        required: true,
-        maxlength: '80',
-      });
-      const email = h('input', {
-        type: 'email',
-        name: 'email',
-        autocomplete: 'email',
-        required: true,
-      });
-      const cls = selectEl(
-        'classId',
-        config.classes.map((c) => ({ value: c.id, label: c.label })),
-        '',
-        'Choose your class',
-      );
-      const consent = h('input', { type: 'checkbox', name: 'consent', id: 'consent' });
-      const status = h('div', { 'aria-live': 'polite' });
-      const submit = h('button', { type: 'submit', class: 'btn btn-primary' }, 'Sign up');
-      const form = h(
-        'form',
-        { class: 'card narrow', novalidate: true },
-        field({ label: 'Full name', control: name, name: 'name' }),
-        field({ label: 'Email address', control: email, name: 'email' }),
-        field({ label: 'Class', control: cls, name: 'classId' }),
-        h(
-          'div',
-          { class: 'field checkbox', dataset: { field: 'consent' } },
-          consent,
-          h(
-            'label',
-            { for: 'consent' },
-            'I have read the ',
-            link('/privacy', 'privacy notice', { target: '_blank' }),
-            ' and agree that my essays are stored in my teacher’s Google account and may be pasted into Claude and other AI tools to help draft feedback. A human reviews every final score.',
-          ),
-          h('p', { class: 'field-error', 'aria-live': 'polite' }),
-        ),
-        submit,
-        status,
-      );
-      form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const errors: Record<string, string> = {};
-        if (name.value.trim().length < 2) errors.name = 'Enter your full name';
-        if (!email.value.trim()) errors.email = 'Enter your email address';
-        if (!cls.value) errors.classId = 'Choose your class';
-        if (!consent.checked) errors.consent = 'Please agree to the privacy notice to continue.';
-        showFieldErrors(form, errors);
-        if (Object.keys(errors).length) return;
-        void busy(submit, 'Signing up…', async () => {
-          try {
-            const res = await api<{ message: string }>('auth.signup', {
-              name: name.value,
-              email: email.value,
-              classId: cls.value,
-              consent: true,
-              timezone: localTimeZone(),
-            });
-            replace(
-              form,
-              notice(
-                'success',
-                h('p', null, res.message),
-                h('p', null, 'Check your inbox and open the link to log in.'),
-              ),
-            );
-          } catch (err) {
-            if (err instanceof ApiClientError) showFieldErrors(form, err.fields);
-            replace(status, errorBox(err));
-          }
+  return centered(
+    page(
+      'Create an account',
+      async(getConfig, (config) => {
+        const name = h('input', {
+          name: 'name',
+          autocomplete: 'name',
+          required: true,
+          maxlength: '80',
         });
-      });
-      return [form, h('p', null, 'Already registered? ', link('/login', 'Log in'), '.')];
-    }),
+        const email = h('input', {
+          type: 'email',
+          name: 'email',
+          autocomplete: 'email',
+          required: true,
+        });
+        const cls = selectEl(
+          'classId',
+          config.classes.map((c) => ({ value: c.id, label: c.label })),
+          '',
+          'Choose your class',
+        );
+        const consent = h('input', { type: 'checkbox', name: 'consent', id: 'consent' });
+        const status = h('div', { 'aria-live': 'polite' });
+        const submit = h('button', { type: 'submit', class: 'btn btn-primary' }, 'Sign up');
+        const form = h(
+          'form',
+          { class: 'card narrow', novalidate: true },
+          field({ label: 'Full name', control: name, name: 'name' }),
+          field({ label: 'Email address', control: email, name: 'email' }),
+          field({ label: 'Class', control: cls, name: 'classId' }),
+          h(
+            'div',
+            { class: 'field checkbox', dataset: { field: 'consent' } },
+            consent,
+            h(
+              'label',
+              { for: 'consent' },
+              'I have read the ',
+              link('/privacy', 'privacy notice', { target: '_blank' }),
+              ' and agree that my essays are stored in my teacher’s Google account and may be pasted into Claude and other AI tools to help draft feedback. A human reviews every final score.',
+            ),
+            h('p', { class: 'field-error', 'aria-live': 'polite' }),
+          ),
+          submit,
+          status,
+        );
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const errors: Record<string, string> = {};
+          if (name.value.trim().length < 2) errors.name = 'Enter your full name';
+          if (!email.value.trim()) errors.email = 'Enter your email address';
+          if (!cls.value) errors.classId = 'Choose your class';
+          if (!consent.checked) errors.consent = 'Please agree to the privacy notice to continue.';
+          showFieldErrors(form, errors);
+          if (Object.keys(errors).length) return;
+          void busy(submit, 'Signing up…', async () => {
+            try {
+              const res = await api<{ message: string }>('auth.signup', {
+                name: name.value,
+                email: email.value,
+                classId: cls.value,
+                consent: true,
+                timezone: localTimeZone(),
+              });
+              replace(
+                form,
+                notice(
+                  'success',
+                  h('p', null, res.message),
+                  h('p', null, 'Check your inbox and open the link to log in.'),
+                ),
+              );
+            } catch (err) {
+              if (err instanceof ApiClientError) showFieldErrors(form, err.fields);
+              replace(status, errorBox(err));
+            }
+          });
+        });
+        return [form, h('p', null, 'Already registered? ', link('/login', 'Log in'), '.')];
+      }),
+    ),
   );
 }
 

@@ -954,3 +954,30 @@ pre.plain-text {
   padding: 0;
   margin: 0 0 16px;
 }
+
+/* Log in and sign up: a centred column in the middle of the screen. */
+main:has(.page-centered) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-centered {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 24px 0;
+}
+
+.page-centered > h1,
+.page-centered > p {
+  text-align: center;
+}
+
+.page-centered .card.narrow {
+  max-width: none;
+}
+
+.page-centered form .btn-primary {
+  width: 100%;
+}
