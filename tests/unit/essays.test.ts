@@ -67,7 +67,7 @@ describe('student essay flow', () => {
   });
 
   it('requires the image for Task 1 Academic and stores it in the essay folder', () => {
-    const { app, topic, student } = setup();
+    const { app, student } = setup();
     const base = {
       taskType: 'task1_academic',
       diagramType: 'static',
@@ -102,7 +102,7 @@ describe('student essay flow', () => {
   });
 
   it('rejects images that are not png/jpg or over 5 MB', () => {
-    const { app, topic, student } = setup();
+    const { app, student } = setup();
     const base = {
       taskType: 'task1_academic',
       diagramType: 'static',

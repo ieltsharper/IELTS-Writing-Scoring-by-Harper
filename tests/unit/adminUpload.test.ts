@@ -85,7 +85,7 @@ describe('admin adds an essay', () => {
   });
 
   it('creates a new student without an email and scores without sending email', () => {
-    const { app, admin, topic, config } = setup();
+    const { app, admin, config } = setup();
     const res = app.call(
       'admin.essays.create',
       {
