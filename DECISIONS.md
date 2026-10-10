@@ -106,6 +106,18 @@ No service in the spec was replaced; everything runs on GitHub Pages, Apps Scrip
   Renaming after a topic change keeps the folder unique with " (2)". Folder dates use the admin time zone.
 - **Times** are stored in UTC ISO strings and shown in the browser's local time zone.
 
+## Essays added by the teacher
+
+- **`admin.essays.create`** adds an essay for an existing student or for a new student created on the spot. It is
+  stored like a practice essay with `Essays.source = 'admin'` (new column; `setup()` adds missing columns to existing
+  tabs), submitted immediately, archived to Drive and shown in the queue as "Uploaded by teacher".
+- **New students may have no email.** They have no consent time (the teacher added them) and cannot log in. Every
+  email job carries its recipient, and a job with no recipient is skipped (`no_email`) instead of failing. If the
+  teacher gives an email, the student can later sign up or log in with it; signing up then records their consent.
+- **Teacher-added essays do not count toward the daily cap**, and "Date written" is stored in `test_date`.
+- **.docx import happens in the browser** with a small ZIP reader and the built-in `DecompressionStream`, so no
+  library is added. Old binary `.doc` files are refused with a hint to save as .docx.
+
 ## Accessibility
 
 - Every field has a label; errors are announced and the first invalid field is focused; dialogs return focus.

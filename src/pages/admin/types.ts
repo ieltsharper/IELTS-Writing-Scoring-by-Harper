@@ -19,6 +19,7 @@ export interface QueueItem {
   assignmentTitle: string | null;
   overTime: boolean;
   pasteAttempts: number;
+  uploadedByAdmin: boolean;
 }
 
 export interface QueueResponse {

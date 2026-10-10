@@ -57,6 +57,7 @@ export function loginJob(ctx: Ctx, user: UserRow, version: string): EmailJob {
     refId: user.id,
     version,
     userId: user.id,
+    to: user.email,
     build: () => {
       // The token is created at send time, so a queued link is still fresh when it goes out.
       const token = newToken(ctx);

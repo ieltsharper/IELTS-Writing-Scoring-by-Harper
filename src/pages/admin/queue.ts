@@ -40,6 +40,7 @@ export function queuePage(ctx: RouteContext): Node {
   const payload = Object.fromEntries(Object.entries(filters).filter(([, v]) => v));
   return page(
     'Scoring queue',
+    h('p', null, link('/admin/essays/new', 'Add an essay', { class: 'btn btn-primary' })),
     async(
       () => api<QueueResponse>('admin.queue', payload),
       (data, reload) => {
@@ -152,6 +153,7 @@ function queueRow(item: QueueItem, reload: () => void) {
       h('br'),
       `${taskLabel(item.taskType)} · ${item.wordCount} words`,
       item.isRewrite ? [' ', badge('Rewrite', 'info')] : null,
+      item.uploadedByAdmin ? [' ', badge('Uploaded by teacher')] : null,
       item.assignmentTitle ? [' ', badge(item.assignmentTitle)] : null,
     ],
     [

@@ -691,6 +691,10 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
         'error',
         'Score submitted, but the email failed to send. Use “Resend email” below or on the Email page.',
       ),
+      no_email: notice(
+        'success',
+        'Score submitted. This student has no email address, so no email was sent.',
+      ),
       duplicate: notice(
         'info',
         'Score saved. The email had already been sent, so it was not sent again.',

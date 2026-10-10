@@ -70,6 +70,10 @@ function signup(ctx: Ctx, payload: unknown) {
       created_at: ctx.nowIso,
     });
   }
+  // A student the teacher added with this email gives consent by signing up themselves.
+  if (exists && !exists.consent_at) {
+    ctx.db.update('Users', (u) => u.id === exists.id, { consent_at: ctx.nowIso });
+  }
   // Same response whether or not the email was already registered.
   requestLoginLink(ctx, email);
   return { message: LOGIN_LINK_MESSAGE };

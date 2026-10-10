@@ -60,6 +60,7 @@ export function resultJob(
     version,
     userId: student.id,
     essayId: essay.id,
+    to: student.email,
     build: () => {
       const score = scoreView(ctx, essay.id);
       if (!score) throw new Error('This essay has no score');
@@ -104,6 +105,7 @@ export function rewriteJob(
     version: '1',
     userId: student.id,
     essayId: essay.id,
+    to: student.email,
     build: () =>
       rewriteReminderEmail({
         to: student.email,

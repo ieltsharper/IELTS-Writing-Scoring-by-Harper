@@ -15,7 +15,8 @@ export const EMAIL_TYPES = [
 ] as const;
 export type EmailType = (typeof EMAIL_TYPES)[number];
 
-export type SendOutcome = 'sent' | 'duplicate' | 'queued' | 'failed';
+/** 'no_email': the student has no email address (added by the teacher), so nothing is sent. */
+export type SendOutcome = 'sent' | 'duplicate' | 'queued' | 'failed' | 'no_email';
 
 export interface EmailJob {
   type: EmailType;
@@ -25,6 +26,8 @@ export interface EmailJob {
   version: string;
   userId: string;
   essayId?: string;
+  /** Recipient address; empty for students the teacher added without an email. */
+  to: string;
   build: () => MailMessage;
 }
 
@@ -63,6 +66,7 @@ function record(
 }
 
 export function sendEmail(ctx: Ctx, job: EmailJob): SendOutcome {
+  if (!job.to) return 'no_email';
   const key = emailKey(job.type, job.refId, job.version);
   const previous = ctx.db.find('EmailEvents', (e) => e.idempotency_key === key);
   if (previous.some((e) => e.status === 'sent')) return 'duplicate';
@@ -116,6 +120,7 @@ export function processEmailQueue(
     try {
       const job = rebuild(event);
       if (!job) throw new Error('Nothing to send any more');
+      if (!job.to) throw new Error('The student has no email address');
       ctx.svc.mail.send(job.build());
       sent++;
     } catch (err) {

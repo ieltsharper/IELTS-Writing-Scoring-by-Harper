@@ -65,6 +65,7 @@ test('student and admin pages have no WCAG A/AA violations', async ({ page }) =>
   await page.getByRole('link', { name: 'Score' }).first().click();
   await check(page, 'scoring page');
   for (const path of [
+    '/admin/essays/new',
     '/admin/students',
     '/admin/assignments',
     '/admin/assignments/new',

@@ -207,6 +207,7 @@ export function assignmentNoticeJob(ctx: Ctx, a: AssignmentRow, student: Row<'Us
     refId: a.id,
     version: student.id,
     userId: student.id,
+    to: student.email,
     build: () =>
       assignmentEmail({
         to: student.email,

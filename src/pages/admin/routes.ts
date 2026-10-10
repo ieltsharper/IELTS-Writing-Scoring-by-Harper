@@ -1,4 +1,5 @@
 import type { Route } from '../../router';
+import { addEssayPage } from './addEssay';
 import { assignmentDetailPage, assignmentsPage, newAssignmentPage } from './assignments';
 import { calibrationPage } from './calibration';
 import { claudeSetupPage } from './claudeSetup';
@@ -10,6 +11,7 @@ import { studentOverviewPage, studentsPage } from './students';
 
 export const routes: Route[] = [
   { pattern: '/admin', guard: 'admin', title: 'Queue', render: queuePage },
+  { pattern: '/admin/essays/new', guard: 'admin', title: 'Add an essay', render: addEssayPage },
   { pattern: '/admin/score/:id', guard: 'admin', title: 'Scoring', render: scoringPage },
   { pattern: '/admin/students', guard: 'admin', title: 'Students', render: studentsPage },
   {

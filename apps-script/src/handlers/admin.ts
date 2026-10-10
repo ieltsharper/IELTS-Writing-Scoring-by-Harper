@@ -66,6 +66,7 @@ function queue(ctx: Ctx, payload: unknown) {
       wordCount: num(e.word_count) ?? 0,
       queueStatus: qs,
       isRewrite: Boolean(e.parent_essay_id),
+      uploadedByAdmin: e.source === 'admin',
       assignmentId: e.assignment_id || null,
       assignmentTitle: assignments.get(e.assignment_id)?.title ?? null,
       overTime: bool(e.over_time),

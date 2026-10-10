@@ -61,6 +61,7 @@ export interface EssaySummary {
   assignmentId: string | null;
   assignmentTitle: string | null;
   overTime: boolean;
+  uploadedByAdmin?: boolean;
   startedAt: string | null;
   deadlineAt: string | null;
 }

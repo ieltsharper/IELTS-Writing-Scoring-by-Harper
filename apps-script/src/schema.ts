@@ -42,6 +42,8 @@ export const SCHEMA = {
     'submitted_at',
     'scored_at',
     'test_date',
+    /** 'admin' when the teacher added the essay; empty for student submissions. */
+    'source',
   ],
   Assignments: [
     'id',

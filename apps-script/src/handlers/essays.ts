@@ -62,6 +62,7 @@ export function submissionsInLastDay(ctx: Ctx, studentId: string): EssayRow[] {
       e.student_id === studentId &&
       e.status !== 'draft' &&
       e.mode !== 'assigned' &&
+      e.source !== 'admin' &&
       Boolean(e.submitted_at) &&
       Date.parse(e.submitted_at) > since,
   );

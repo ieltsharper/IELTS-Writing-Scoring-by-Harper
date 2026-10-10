@@ -147,6 +147,7 @@ export function essaySummary(ctx: Ctx, essay: EssayRow) {
     assignmentId: essay.assignment_id || null,
     assignmentTitle: assignment?.title ?? null,
     overTime: bool(essay.over_time),
+    uploadedByAdmin: essay.source === 'admin',
     startedAt: essay.started_at || null,
     deadlineAt: deadlineAt(ctx, essay),
   };

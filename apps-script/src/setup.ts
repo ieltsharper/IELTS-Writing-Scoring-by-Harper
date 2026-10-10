@@ -23,11 +23,13 @@ const DEMO_PNG =
 
 export interface SetupResult {
   createdTabs: string[];
+  addedColumns: string[];
   seeded: string[];
 }
 
 export function runSetup(svc: Services, options: { demo?: boolean } = {}): SetupResult {
   const createdTabs: string[] = [];
+  const addedColumns: string[] = [];
   for (const name of TABLE_NAMES) {
     let sheet = svc.spreadsheet.getSheetByName(name);
     if (!sheet) {
@@ -39,6 +41,20 @@ export function runSetup(svc: Services, options: { demo?: boolean } = {}): Setup
     sheet.getRange(1, 1, sheet.getMaxRows(), columns.length).setNumberFormat('@');
     if (sheet.getLastRow() === 0) {
       sheet.getRange(1, 1, 1, columns.length).setValues([[...columns]]);
+    } else {
+      // Columns added in later versions go at the end of an existing header row.
+      const width = Math.max(sheet.getLastColumn(), 1);
+      const header = sheet
+        .getRange(1, 1, 1, width)
+        .getValues()[0]
+        .map((h) => String(h ?? '').trim());
+      const missing = columns.filter((c) => !header.includes(c));
+      if (missing.length) {
+        const used = header.filter(Boolean).length;
+        sheet.getRange(1, used + 1, 1, missing.length).setNumberFormat('@');
+        sheet.getRange(1, used + 1, 1, missing.length).setValues([missing]);
+        addedColumns.push(...missing.map((c) => `${name}.${c}`));
+      }
     }
     sheet.setFrozenRows(1);
   }
@@ -99,7 +115,7 @@ export function runSetup(svc: Services, options: { demo?: boolean } = {}): Setup
     db.insert('Settings', { key: 'demo_seeded', value: 'true' });
     seeded.push('demo students and essays');
   }
-  return { createdTabs, seeded };
+  return { createdTabs, addedColumns, seeded };
 }
 
 const DEMO_TASK2_EDUCATION = `Some people believe that university education should be free for everyone, while others think students should pay for their own studies. In my opinion, the goverment should pay for most of the cost, but students should also contribute a small amount.

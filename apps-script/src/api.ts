@@ -1,6 +1,7 @@
 // Registers every action module with the router and exposes the API entry.
 import { accountActions } from './handlers/account';
 import { adminActions } from './handlers/admin';
+import { adminUploadActions } from './handlers/adminUpload';
 import { claudeSetupActions } from './handlers/claudeSetup';
 import { dashboardActions } from './handlers/dashboard';
 import { listActions } from './handlers/lists';
@@ -19,6 +20,7 @@ function ensureRegistered(): void {
   registerActions(essayActions);
   registerActions(assignmentActions);
   registerActions(adminActions);
+  registerActions(adminUploadActions);
   registerActions(listActions);
   registerActions(claudeSetupActions);
   registerActions(scoringActions);
