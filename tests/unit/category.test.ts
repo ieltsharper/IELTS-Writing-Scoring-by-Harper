@@ -186,12 +186,10 @@ describe('Task 1 diagram type and Task 2 topic + essay type', () => {
     const { app } = setup();
     const admin = app.login('admin@example.com');
     const pending = app.call('admin.queue', {}, admin).items[0];
-    app
-      .db()
-      .update('Essays', (e) => e.id === pending.id, {
-        diagram_type: '',
-        topic_id: app.db().all('Topics')[1].id,
-      });
+    app.db().update('Essays', (e) => e.id === pending.id, {
+      diagram_type: '',
+      topic_id: app.db().all('Topics')[1].id,
+    });
     const res = app.call(
       'admin.saveScore',
       {

@@ -2,6 +2,7 @@
 // email is rebuilt from its EmailEvents row (type + idempotency key).
 import {
   CRITERIA,
+  type Criterion,
   criterionLabel,
   MODE_LABELS,
   type Mode,
@@ -34,7 +35,14 @@ export function summarize(markdownText: string, max = 400): string {
 
 /** The 3 most frequent error categories in this essay, with one example correction each. */
 export function topErrors(ctx: Ctx, essayId: string, limit = 3) {
-  const errors = errorsView(ctx, essayId);
+  return groupTopErrors(errorsView(ctx, essayId), limit);
+}
+
+/** Group errors (sorted by position) by category, most frequent first. */
+export function groupTopErrors(
+  errors: Array<{ category: string; excerpt: string; correction: string }>,
+  limit = 3,
+) {
   const groups = new Map<string, typeof errors>();
   for (const e of errors) {
     const list = groups.get(e.category) ?? [];
@@ -70,27 +78,14 @@ export function resultJob(
     build: () => {
       const score = scoreView(ctx, essay.id);
       if (!score) throw new Error('This essay has no score');
-      const taskType = essay.task_type as TaskType;
       const rr = rewriteRequestFor(ctx, essay.id);
-      const rewriteDue =
-        rr && (rr.status === 'requested' || rr.status === 'overdue')
-          ? formatForEmail(ctx, rr.due_at, student.timezone)
-          : null;
-      return resultEmail({
-        to: student.email,
-        name: student.name,
-        taskTypeLabel: TASK_TYPE_LABELS[taskType],
-        topic: essayLabel(ctx, essay),
-        modeLabel: MODE_LABELS[essay.mode as Mode] ?? essay.mode,
+      return resultMessage(ctx, essay, student, {
+        criteria: score.criteria,
         overall: score.overall,
-        criteria: CRITERIA.map((c) => ({
-          label: criterionLabel(c, taskType),
-          score: score.criteria[c],
-        })),
-        summary: summarize(score.generalComment),
+        generalComment: score.generalComment,
         topErrors: topErrors(ctx, essay.id),
-        rewriteDue,
-        url: appUrl(ctx, `/essays/${essay.id}`),
+        rewriteDueAt:
+          rr && (rr.status === 'requested' || rr.status === 'overdue') ? rr.due_at : null,
         resent: type === 'result_resent',
       });
     },
@@ -152,4 +147,38 @@ export function jobFromEvent(ctx: Ctx, event: Row<'EmailEvents'>): EmailJob | nu
     default:
       return null;
   }
+}
+
+/** The result email for an essay and a score (saved, or a preview of the form). */
+export function resultMessage(
+  ctx: Ctx,
+  essay: EssayRow,
+  student: Row<'Users'>,
+  data: {
+    criteria: Record<Criterion, number>;
+    overall: number;
+    generalComment: string;
+    topErrors: ReturnType<typeof groupTopErrors>;
+    rewriteDueAt: string | null;
+    resent: boolean;
+  },
+) {
+  const taskType = essay.task_type as TaskType;
+  return resultEmail({
+    to: student.email,
+    name: student.name,
+    taskTypeLabel: TASK_TYPE_LABELS[taskType],
+    topic: essayLabel(ctx, essay),
+    modeLabel: MODE_LABELS[essay.mode as Mode] ?? essay.mode,
+    overall: data.overall,
+    criteria: CRITERIA.map((c) => ({
+      label: criterionLabel(c, taskType),
+      score: data.criteria[c],
+    })),
+    summary: summarize(data.generalComment),
+    topErrors: data.topErrors,
+    rewriteDue: data.rewriteDueAt ? formatForEmail(ctx, data.rewriteDueAt, student.timezone) : null,
+    url: appUrl(ctx, `/essays/${essay.id}`),
+    resent: data.resent,
+  });
 }

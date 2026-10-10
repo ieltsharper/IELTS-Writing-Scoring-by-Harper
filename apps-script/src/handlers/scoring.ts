@@ -3,6 +3,7 @@ import { overallBand } from '../../../shared/band';
 import {
   CLAUDE_SOURCE_NAME,
   CRITERIA,
+  type Criterion,
   DIAGRAM_TYPE_IDS,
   ESSAY_TYPE_IDS,
   LIMITS,
@@ -14,7 +15,7 @@ import { clearDashboardCache } from '../dashboardCache';
 import { MAX_CELL } from '../db';
 import { renameEssayFolder } from '../drive';
 import { processEmailQueue, type SendOutcome, sendEmail } from '../email';
-import { jobFromEvent, resultJob } from '../emailJobs';
+import { groupTopErrors, jobFromEvent, resultJob, resultMessage } from '../emailJobs';
 import type { ActionDef } from '../router';
 import type { Row } from '../schema';
 import { Reader } from '../validate';
@@ -136,7 +137,8 @@ function applyRewrite(
   }
 }
 
-function saveScore(ctx: Ctx, payload: unknown) {
+/** Read and validate the score form (shared by Save, Submit and Preview). */
+function readScoreForm(ctx: Ctx, payload: unknown) {
   const r = new Reader(payload);
   const essayId = r.id('essayId');
   const submit = r.bool('submit');
@@ -149,7 +151,7 @@ function saveScore(ctx: Ctx, payload: unknown) {
   if (essay.status === 'scored' && !submit) {
     throw new ApiError(
       'conflict',
-      'This essay is already scored. Use “Submit score” to update it.',
+      'This essay is already scored. Use “Preview and submit score” to update it.',
     );
   }
 
@@ -196,6 +198,34 @@ function saveScore(ctx: Ctx, payload: unknown) {
     r.addError('feedback', 'The feedback is too long in total. Please shorten it.');
   }
   r.done();
+  return {
+    essay,
+    submit,
+    notifyAgain,
+    requestId,
+    scores,
+    feedback,
+    feedbackJson,
+    generalComment,
+    category,
+    errors,
+    rewrite,
+  };
+}
+
+function saveScore(ctx: Ctx, payload: unknown) {
+  const {
+    essay,
+    submit,
+    notifyAgain,
+    requestId,
+    scores,
+    feedbackJson,
+    generalComment,
+    category,
+    errors,
+    rewrite,
+  } = readScoreForm(ctx, payload);
 
   // Scores (overall always recomputed with the app's rounding).
   const complete = scores.every((s) => s !== null);
@@ -266,6 +296,61 @@ function saveScore(ctx: Ctx, payload: unknown) {
   return { email, status: 'scored' };
 }
 
+/**
+ * What the student will receive if this form is submitted now: the email
+ * (subject, recipient, HTML and text) built from the unsaved form. Nothing is
+ * written or sent.
+ */
+function previewResult(ctx: Ctx, payload: unknown) {
+  const form = readScoreForm(ctx, { ...(payload as object), submit: true });
+  const { essay, scores, category, errors, rewrite, generalComment, notifyAgain } = form;
+  const student = ctx.db.byId('Users', essay.student_id);
+  if (!student) throw new ApiError('not_found', 'Student not found.');
+  const overall = overallBand(scores as number[]);
+  const criteria = Object.fromEntries(CRITERIA.map((c, i) => [c, scores[i] as number])) as Record<
+    Criterion,
+    number
+  >;
+  const labels = new Map(ctx.db.all('ErrorCategories').map((c) => [c.id, c.label]));
+  const sorted = [...errors].sort((a, b) => (a.start ?? Infinity) - (b.start ?? Infinity));
+  const rr = rewriteRequestFor(ctx, essay.id);
+  const rewriteDueAt =
+    rewrite.required && (!rr || rr.status !== 'submitted')
+      ? endOfDayUtc(
+          rewrite.dueDate,
+          student.timezone || adminTimezone(ctx),
+          ctx.svc.tzOffsetMinutes,
+        )
+      : null;
+  const wasScored = essay.status === 'scored';
+  const willEmail = !wasScored || notifyAgain;
+  const message = resultMessage(ctx, { ...essay, ...categoryColumns(category) }, student, {
+    criteria,
+    overall,
+    generalComment,
+    topErrors: groupTopErrors(
+      sorted.map((e) => ({
+        category: labels.get(e.categoryId) ?? 'Uncategorised',
+        excerpt: e.excerpt,
+        correction: e.correction,
+      })),
+    ),
+    rewriteDueAt,
+    resent: wasScored,
+  });
+  return {
+    to: student.email,
+    studentName: student.name,
+    overall,
+    rewriteDueAt,
+    /** 'send' | 'no_email' (student has no address) | 'none' (already scored, not notifying). */
+    delivery: !willEmail ? 'none' : student.email ? 'send' : 'no_email',
+    subject: message.subject,
+    html: message.html,
+    text: message.text,
+  };
+}
+
 /** Keys whose latest attempts all failed (no "sent" row for the key). */
 function failedEvents(ctx: Ctx, filter: (e: Row<'EmailEvents'>) => boolean) {
   const all = ctx.db.all('EmailEvents');
@@ -319,6 +404,7 @@ function emailStatus(ctx: Ctx) {
 
 export const scoringActions: Record<string, ActionDef> = {
   'admin.saveScore': { write: true, handler: (ctx, p) => saveScore(ctx, p) },
+  'admin.previewResult': { write: false, handler: (ctx, p) => previewResult(ctx, p) },
   'admin.resendEmail': {
     write: true,
     handler: (ctx, p) => {

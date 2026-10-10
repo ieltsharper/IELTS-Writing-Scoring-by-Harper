@@ -137,6 +137,17 @@ No service in the spec was replaced; everything runs on GitHub Pages, Apps Scrip
   for it). The sign-up consent checkbox still says essays may be pasted into Claude and other AI tools and that a human
   reviews every final score.
 
+## Feedback language and preview before sending
+
+- **Comments for students are in Vietnamese**: the Claude Project instructions (and the Copy for Claude reminder) ask
+  for the four criterion comments, the general comment and error notes in Vietnamese, while the excerpt (copied from
+  the essay) and the correction stay in English. The app's own labels (criterion names, email headings) stay in English.
+- **Preview before sending**: "Preview and submit score" first calls `admin.previewResult`, which validates the form
+  exactly like Submit and builds the result email from the unsaved form without writing or sending anything. The
+  preview shows the essay page (scores, feedback, highlighted errors) and the email (recipient, subject, HTML in a
+  sandboxed frame, plain text). Curating means going back to the form, editing, and previewing again; only
+  **Send to student** saves the final score and sends the email.
+
 ## Accessibility
 
 - Every field has a label; errors are announced and the first invalid field is focused; dialogs return focus.

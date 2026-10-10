@@ -170,7 +170,9 @@ Scoring one essay:
    in the essay are flagged for you to fix.
 3. Optionally paste AI4IELTS / Wispace / Perplexity results in their tabs (each shows its running bias), press
    **Copy reconcile prompt**, paste it into the same Claude chat and paste the answer into **Reconcile notes**.
-4. Edit the scores, feedback and errors, optionally require a rewrite, and press **Submit score**.
+4. Edit the scores, feedback and errors, optionally require a rewrite, and press **Preview and submit score**. The
+   preview shows the essay page and the email exactly as the student will receive them. Press **Back to editing** to
+   change anything, or **Send to student** to save the final score and send the email.
 
 ### Adding essays yourself
 
@@ -223,7 +225,7 @@ Run through this once after deploying (use your own second email address as a te
 7. [ ] Daily cap: a 4th practice submission within 24 hours is refused with a clear message.
 8. [ ] As admin: the queue shows the essays oldest first. Open one, **Copy for Claude**, paste into your Claude
        Project, paste the reply back, **Load into form**. Paste one AI4IELTS result. Change one score, tick
-       **Rewrite required** with a due date, **Submit score**.
+       **Rewrite required** with a due date, **Preview and submit score**, check the preview, **Send to student**.
 9. [ ] The student gets the result email (band, four criteria, top errors, rewrite date, button). In the Sheet:
        Scores, ErrorLog, SourceFeedback (Claude + AI4IELTS) and EmailEvents rows exist.
 10. [ ] As the student: the essay page shows scores, feedback and highlighted errors, but nothing from Claude drafts or

@@ -38,6 +38,7 @@ import {
 } from '../../ui/components';
 import { type CategoryValues, categoryFields } from '../../ui/categoryFields';
 import { copyText } from '../../ui/clipboard';
+import { openResultPreview, type ServerPreview } from './resultPreview';
 import { essayText, selectionOffsets } from '../../ui/essayText';
 import { formatBand, formatDateTime, modeLabel, signed, taskLabel } from '../../ui/format';
 import { remoteImage } from '../../ui/image';
@@ -691,7 +692,11 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
     { type: 'button', class: 'btn', hidden: essay.status === 'scored' },
     'Save draft',
   );
-  const submitBtn = h('button', { type: 'button', class: 'btn btn-primary' }, 'Submit score');
+  const submitBtn = h(
+    'button',
+    { type: 'button', class: 'btn btn-primary' },
+    'Preview and submit score',
+  );
 
   const showOutcome = (res: { email: string; driveRenamed?: boolean }) => {
     const messages: Record<string, Child> = {
@@ -740,16 +745,39 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
     const problems = validate(true);
     if (problems.length)
       return replace(formStatus, notice('error', ...problems.map((p) => h('p', null, p))));
-    const already = essay.status === 'scored';
-    const ok = await confirmDialog({
-      title: already ? 'Update the final score?' : 'Submit the final score?',
-      message: already
-        ? state.notifyAgain
-          ? 'The student will see the new score and receive the result email again.'
-          : 'The student will see the new score. No email will be sent.'
-        : 'The essay is locked as scored and the student receives the result email.',
-      confirmLabel: already ? 'Update score' : 'Submit score',
-    });
+    // Show exactly what the student will receive before anything is saved or sent.
+    let preview: ServerPreview;
+    try {
+      preview = await busy(submitBtn, 'Preparing preview…', () =>
+        api<ServerPreview>('admin.previewResult', payload(true)),
+      );
+    } catch (err) {
+      replace(formStatus, errorBox(err), apiFieldList(err));
+      return;
+    }
+    const categoryName = (id: string | null) =>
+      data.categories.find((c) => c.id === id)?.label ?? 'Uncategorised';
+    const ok = await openResultPreview(
+      {
+        taskType,
+        body: essay.body,
+        criteria: state.scores as Record<Criterion, number>,
+        feedback: state.feedback,
+        generalComment: state.generalComment,
+        errors: state.errors.map((e) => ({
+          key: e.key,
+          category: categoryName(e.categoryId),
+          excerpt: e.excerpt,
+          start: e.start,
+          end: e.end,
+          correction: e.correction,
+          note: e.note,
+        })),
+        rewriteNote: state.rewrite.required ? state.rewrite.note : '',
+      },
+      preview,
+      { alreadyScored: essay.status === 'scored' },
+    );
     if (!ok) return;
     await busy(submitBtn, 'Submitting…', async () => {
       try {

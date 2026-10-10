@@ -130,8 +130,25 @@ test('student submits an essay; admin scores it with Claude and an external tool
     .fill('Fix the spelling and agreement errors.');
 
   // ---- Submits ----
-  await page.getByRole('button', { name: 'Submit score' }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Submit score' }).click();
+  await page.getByRole('button', { name: 'Preview and submit score' }).click();
+  // ---- Previews what the student will receive, then sends ----
+  const preview = page.getByRole('dialog');
+  await expect(
+    preview.getByRole('heading', { name: /Preview: what the student will receive/ }),
+  ).toBeVisible();
+  await expect(
+    preview.locator('.preview-student').getByText('A clear answer with a few accuracy problems.'),
+  ).toBeVisible();
+  await expect(preview.locator('mark.err')).toHaveCount(2);
+  await preview.getByRole('tab', { name: 'Email' }).click();
+  await expect(preview.getByText('Your score: Task 2 – Band 6.0')).toBeVisible();
+  await expect(preview.getByText(STUDENT_EMAIL).first()).toBeVisible();
+  // Going back changes nothing; nothing was sent.
+  await preview.getByRole('button', { name: 'Back to editing' }).click();
+  const pre = (await (await page.request.get(`${API}/__test/email-events`)).json()) as unknown[];
+  expect(pre).toHaveLength(2); // only the two login links so far
+  await page.getByRole('button', { name: 'Preview and submit score' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Send to student' }).click();
   await expect(page.getByText('Score submitted and the result email was sent.')).toBeVisible();
 
   // ---- An email event is recorded ----
