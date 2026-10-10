@@ -1076,9 +1076,25 @@ mark.err.active {
   font-weight: 600;
 }
 
-.legend-item mark.err {
+.swatch {
   display: inline-block;
   width: 18px;
   height: 14px;
-  cursor: default;
+  border-bottom: 2px solid;
+}
+.swatch-task {
+  background: #fecaca;
+  border-color: #b91c1c;
+}
+.swatch-coherence {
+  background: #fed7aa;
+  border-color: #c2410c;
+}
+.swatch-lexical {
+  background: #bfdbfe;
+  border-color: #1d4ed8;
+}
+.swatch-grammar {
+  background: #e9d5ff;
+  border-color: #7e22ce;
 }

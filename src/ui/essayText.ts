@@ -25,7 +25,7 @@ export function highlightLegend(): HTMLElement {
       h(
         'span',
         { class: `legend-item err-${c}` },
-        h('mark', { class: `err err-${c}`, 'aria-hidden': 'true' }, ' '),
+        h('span', { class: `swatch swatch-${c}`, 'aria-hidden': 'true' }),
         CRITERION_SHORT[c],
       ),
     ),
