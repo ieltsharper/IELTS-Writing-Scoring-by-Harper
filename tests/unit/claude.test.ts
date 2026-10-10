@@ -166,3 +166,85 @@ describe('Copy for Claude', () => {
     expect(text).toContain('Revised suggestion');
   });
 });
+
+describe('Vietnamese comments, English excerpts', () => {
+  it('tells Claude to write comments in Vietnamese and keep excerpts and corrections in English', async () => {
+    const { claudeProjectInstructions } = await import('../../shared/claude');
+    const text = claudeProjectInstructions();
+    expect(text).toContain('VIETNAMESE');
+    expect(text).toMatch(/"excerpt" is copied exactly from the essay \(English\)/);
+    const prompt = buildClaudePrompt({
+      taskType: 'task2',
+      prompt: 'p',
+      topic: 't',
+      wordCount: 1,
+      body: 'b',
+      recurringErrors: [],
+    });
+    expect(prompt).toContain(
+      'Feedback, general_comment and notes in Vietnamese; excerpts and corrections in English.',
+    );
+  });
+
+  it('keeps Vietnamese feedback intact through parsing, scoring and the result email', async () => {
+    const { createTestApp } = await import('../helpers');
+    const app = createTestApp();
+    const admin = app.login('admin@example.com');
+    const pending = app.call('admin.queue', {}, admin).items[0];
+    const vi = 'Bài viết có **cấu trúc rõ ràng**, nhưng cần phát triển ý "recycling" kỹ hơn.';
+    const reply = JSON.stringify({
+      scores: { task: 6, coherence: 6.5, lexical: 6, grammar: 6 },
+      feedback: {
+        task: vi,
+        coherence: 'Mạch lạc.',
+        lexical: 'Từ vựng ổn.',
+        grammar: 'Chú ý chia động từ.',
+      },
+      general_comment: 'Bài làm tốt, hãy tiếp tục cố gắng!',
+      suggested_topic: '',
+      errors: [
+        {
+          excerpt: 'Vietnam only recycle 10%',
+          category: 'Subject-verb agreement',
+          correction: 'Vietnam only recycled 10%',
+          note: 'Dùng thì quá khứ.',
+        },
+      ],
+    });
+    const parsed = parseClaudeReply(reply);
+    expect(parsed.ok && parsed.value.feedback.task).toBe(vi);
+    app.call('admin.saveClaudeDraft', { essayId: pending.id, rawText: reply }, admin);
+    app.call(
+      'admin.saveScore',
+      {
+        essayId: pending.id,
+        scores: { task: 6, coherence: 6.5, lexical: 6, grammar: 6 },
+        feedback: parsed.ok ? parsed.value.feedback : {},
+        generalComment: 'Bài làm tốt, hãy tiếp tục cố gắng!',
+        errors: [],
+        submit: true,
+      },
+      admin,
+    );
+    const an = app.login('demo.an@example.com');
+    const view = app.call('essays.get', { id: pending.id }, an);
+    expect(view.score.feedback.task).toBe(vi);
+    const mail = app.svc.mail.outbox.find(
+      (m) => m.to === 'demo.an@example.com' && m.subject.includes('score'),
+    )!;
+    expect(mail.text).toContain('Bài làm tốt, hãy tiếp tục cố gắng!');
+    expect(mail.html).toContain('Bài làm tốt');
+  });
+});
+
+describe('email feedback summary', () => {
+  it('removes Markdown but keeps punctuation, hyphens and Vietnamese', async () => {
+    const { summarize } = await import('../../apps-script/src/emailJobs');
+    expect(
+      summarize(
+        '## Nhận xét\n- **Rất tốt!** Dùng từ _well-known_ và `make-up`.\n> [Xem thêm](https://x.y)',
+      ),
+    ).toBe('Nhận xét Rất tốt! Dùng từ well-known và make-up. Xem thêm');
+    expect(summarize('a'.repeat(500)).length).toBe(400);
+  });
+});

@@ -19,9 +19,14 @@ import { errorsView, rewriteRequestFor, scoreView } from './views';
 
 /** Plain-text summary of Markdown feedback for the email (full feedback stays behind login). */
 export function summarize(markdownText: string, max = 400): string {
+  // Remove Markdown syntax only, so punctuation such as "!" and hyphenated words survive.
   const plain = markdownText
     .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/[#>*_`~[\]()!-]+/g, ' ')
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1') // links and images → their text
+    .replace(/^\s{0,3}(?:#{1,6}\s+|>\s?|[-*+]\s+|\d+[.)]\s+)/gm, '') // headings, quotes, list markers
+    .replace(/(\*\*|__|~~)(.+?)\1/g, '$2') // bold, strikethrough
+    .replace(/(^|[^\w*])[*_]([^*_\n]+)[*_](?=[^\w*]|$)/g, '$1$2') // italics
+    .replace(/`([^`]*)`/g, '$1')
     .replace(/\s+/g, ' ')
     .trim();
   return plain.length > max ? `${plain.slice(0, max - 1).trimEnd()}…` : plain;
