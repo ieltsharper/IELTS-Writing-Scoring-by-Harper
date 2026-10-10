@@ -44,9 +44,12 @@ export function sourceScoreRows(ctx: Ctx, filter: { taskType?: string } = {}): S
 
 export function calibrationFor(ctx: Ctx, taskType = '', includeInactive = false) {
   return cached(ctx, 'admin', `calibration:${taskType}:${includeInactive}`, () => {
+    const rows = sourceScoreRows(ctx, { taskType: taskType || undefined });
+    const withData = new Set(rows.map((r) => r.sourceId));
+    // Switched-off tools are shown only when they already have results (history stays visible).
     const sources = ctx.db
-      .find('FeedbackSources', (s) => includeInactive || bool(s.active))
+      .find('FeedbackSources', (s) => bool(s.active) || (includeInactive && withData.has(s.id)))
       .map((s) => ({ id: s.id, name: s.name }));
-    return sourceCalibration(sourceScoreRows(ctx, { taskType: taskType || undefined }), sources);
+    return sourceCalibration(rows, sources);
   });
 }

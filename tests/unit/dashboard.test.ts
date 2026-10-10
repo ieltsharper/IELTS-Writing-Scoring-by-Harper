@@ -235,3 +235,27 @@ describe('dashboard and calibration update after a score is submitted', () => {
     });
   });
 });
+
+describe('switched-off feedback sources', () => {
+  it('hides inactive tools from scoring and calibration unless they have results', () => {
+    const app = createTestApp();
+    const admin = app.login('admin@example.com');
+    const id = (name: string) => app.db().findOne('FeedbackSources', (s) => s.name === name)!.id;
+    for (const name of ['AI4IELTS', 'Wispace']) {
+      app.call('admin.sources.save', { id: id(name), name, active: false }, admin);
+    }
+    // Remove the demo results for Wispace so it has no history.
+    app.db().remove('SourceFeedback', (r) => r.source_id === id('Wispace'));
+    const cal = app.call('admin.calibration', {}, admin).sources.map((s: any) => s.name);
+    expect(cal).toContain('Claude');
+    expect(cal).toContain('Perplexity');
+    expect(cal).toContain('AI4IELTS'); // inactive but has demo results
+    expect(cal).not.toContain('Wispace');
+    const pending = app.call('admin.queue', {}, admin).items[0];
+    const view = app.call('admin.essay', { id: pending.id }, admin);
+    expect(view.sources.filter((s: any) => s.active).map((s: any) => s.name)).toEqual([
+      'Claude',
+      'Perplexity',
+    ]);
+  });
+});
