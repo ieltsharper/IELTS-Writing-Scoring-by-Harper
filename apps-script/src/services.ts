@@ -83,6 +83,8 @@ export interface ScriptProps {
   SHEET_ID?: string;
   DRIVE_ROOT_FOLDER_ID?: string;
   APP_URL?: string;
+  /** Shared with IELTS Harper Portal (its HARPER_SECRET) for portal.essays.import. */
+  PORTAL_SECRET?: string;
 }
 
 export interface Services {

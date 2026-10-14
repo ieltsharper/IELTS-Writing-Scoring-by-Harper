@@ -13,6 +13,7 @@ function scriptProps(): ScriptProps {
     SHEET_ID: p.getProperty('SHEET_ID') ?? undefined,
     DRIVE_ROOT_FOLDER_ID: p.getProperty('DRIVE_ROOT_FOLDER_ID') ?? undefined,
     APP_URL: p.getProperty('APP_URL') ?? undefined,
+    PORTAL_SECRET: p.getProperty('PORTAL_SECRET') ?? undefined,
   };
 }
 

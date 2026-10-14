@@ -2,6 +2,7 @@
 import { accountActions } from './handlers/account';
 import { adminActions } from './handlers/admin';
 import { adminUploadActions } from './handlers/adminUpload';
+import { portalImportActions } from './handlers/portalImport';
 import { claudeSetupActions } from './handlers/claudeSetup';
 import { dashboardActions } from './handlers/dashboard';
 import { listActions } from './handlers/lists';
@@ -21,6 +22,7 @@ function ensureRegistered(): void {
   registerActions(assignmentActions);
   registerActions(adminActions);
   registerActions(adminUploadActions);
+  registerActions(portalImportActions);
   registerActions(listActions);
   registerActions(claudeSetupActions);
   registerActions(scoringActions);

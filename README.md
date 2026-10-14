@@ -115,6 +115,11 @@ Open the project (`npx clasp open-script` from `apps-script/`), go to **Project 
 | `SHEET_ID`             | The Sheet ID from 3.1                                                                    |
 | `DRIVE_ROOT_FOLDER_ID` | The folder ID from 3.1                                                                   |
 | `APP_URL`              | The front-end URL, e.g. `https://ieltsharper.github.io/IELTS-Writing-Scoring-by-Harper/` |
+| `PORTAL_SECRET`        | Optional. The key from IELTS Harper Portal's `createHarperKey` (at least 32 characters). |
+
+`PORTAL_SECRET` lets IELTS Harper Portal send the essays of its daily writing task here (action
+`portal.essays.import`, server to server). They join the normal queue and Drive archive. Without it the action
+refuses every request.
 
 ### 3.6 Run setup() and installTriggers(), then deploy
 
