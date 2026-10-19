@@ -19,6 +19,7 @@ export type Resource =
 export const PUBLIC_ACTIONS = new Set([
   'config.get',
   'auth.signup',
+  'auth.login',
   'auth.requestLink',
   'auth.exchange',
   // Server-to-server from IELTS Harper Portal; checks its own shared secret.
@@ -30,6 +31,7 @@ export const USER_ACTIONS = new Set([
   'auth.logout',
   'me.get',
   'me.update',
+  'me.setPassword',
   'me.delete',
   'essays.listMine',
   'essays.get',

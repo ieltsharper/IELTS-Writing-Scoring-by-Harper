@@ -1,9 +1,21 @@
 // Admin: student list and per-student overview.
-import { api } from '../../api';
-import { h } from '../../dom';
+import { api, ApiClientError } from '../../api';
+import { h, replace } from '../../dom';
 import { navigate, type RouteContext } from '../../router';
 import type { EssaySummary, RewriteView } from '../../types';
-import { async, badge, empty, link, notice, page, table } from '../../ui/components';
+import {
+  async,
+  badge,
+  busy,
+  empty,
+  errorBox,
+  field,
+  link,
+  notice,
+  page,
+  showFieldErrors,
+  table,
+} from '../../ui/components';
 import {
   countdown,
   formatBand,
@@ -36,6 +48,7 @@ interface StudentRow {
   lastSubmittedAt: string | null;
   overdueRewrites: number;
   targetBand: number | null;
+  hasPassword: boolean;
 }
 
 export function studentsPage(): Node {
@@ -54,6 +67,7 @@ export function studentsPage(): Node {
                 'Target',
                 'Last essay',
                 'Overdue rewrites',
+                'Password',
               ],
               rows.map((s) => [
                 link(`/admin/students/${s.id}`, s.name),
@@ -63,6 +77,7 @@ export function studentsPage(): Node {
                 formatBand(s.targetBand),
                 formatDateTime(s.lastSubmittedAt),
                 s.overdueRewrites ? badge(String(s.overdueRewrites), 'danger') : '0',
+                s.hasPassword ? 'Set' : badge('Not set', 'warning'),
               ]),
             )
           : empty('No students have signed up yet.'),
@@ -115,6 +130,7 @@ export function studentOverviewPage(ctx: RouteContext): Node {
           o.student.examDate ? ` · exam ${formatDate(o.student.examDate)}` : '',
           ` · joined ${formatDate(o.student.createdAt)}`,
         ),
+        setPasswordForm(o.student.id),
         o.overdueRewrites.length
           ? notice(
               'error',
@@ -204,4 +220,56 @@ export function studentOverviewPage(ctx: RouteContext): Node {
       ),
     'Loading student…',
   );
+}
+
+/** The teacher sets a password for a student (e.g. one who forgot it) and tells them in class. */
+function setPasswordForm(studentId: string): HTMLElement {
+  const password = h('input', {
+    type: 'text',
+    name: 'password',
+    autocomplete: 'off',
+    maxlength: '128',
+  });
+  const status = h('div', { 'aria-live': 'polite' });
+  const save = h('button', { type: 'submit', class: 'btn btn-small' }, 'Set password');
+  const form = h(
+    'form',
+    { class: 'card narrow', novalidate: true },
+    h(
+      'details',
+      null,
+      h('summary', null, 'Set a password for this student'),
+      h(
+        'p',
+        { class: 'hint' },
+        'Use this when a student forgot their password or never received the login email. Tell them the new password; they can change it in Settings.',
+      ),
+      field({
+        label: 'New password',
+        control: password,
+        name: 'password',
+        hint: 'At least 8 characters.',
+      }),
+      save,
+      status,
+    ),
+  );
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (password.value.length < 8) {
+      return showFieldErrors(form, { password: 'Use at least 8 characters' });
+    }
+    void busy(save, 'Saving…', async () => {
+      try {
+        await api('admin.students.setPassword', { studentId, password: password.value });
+        showFieldErrors(form, {});
+        password.value = '';
+        replace(status, notice('success', 'Password saved. Tell the student their new password.'));
+      } catch (err) {
+        if (err instanceof ApiClientError) showFieldErrors(form, err.fields);
+        replace(status, errorBox(err));
+      }
+    });
+  });
+  return form;
 }

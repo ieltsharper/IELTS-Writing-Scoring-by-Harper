@@ -5,6 +5,7 @@ import { expect, type Page, test } from '@playwright/test';
 
 const API = 'http://localhost:8788';
 const STUDENT_EMAIL = 'e2e.student@example.com';
+const STUDENT_PASSWORD = 'harper-e2e-pass';
 
 const ESSAY =
   'Some people believe that university should be free for everyone. In my opinion, the goverment should pay most of the cost. ' +
@@ -28,12 +29,11 @@ test('student submits an essay; admin scores it with Claude and an external tool
   await page.goto('#/signup');
   await page.getByLabel('Full name').fill('E2E Student');
   await page.getByLabel('Email address').fill(STUDENT_EMAIL);
+  await page.getByLabel('Choose a password').fill(STUDENT_PASSWORD);
   await page.getByLabel('Class').selectOption({ label: 'IELTS 7' });
   await page.getByRole('checkbox').check();
   await page.getByRole('button', { name: 'Sign up' }).click();
-  await expect(page.getByText('If that email is registered, a link is on its way.')).toBeVisible();
-
-  await openLoginLink(page, STUDENT_EMAIL);
+  // Straight into the site, no email needed.
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
 
   // ---- Saves a draft ----
@@ -146,7 +146,7 @@ test('student submits an essay; admin scores it with Claude and an external tool
   // Going back changes nothing; nothing was sent.
   await preview.getByRole('button', { name: 'Back to editing' }).click();
   const pre = (await (await page.request.get(`${API}/__test/email-events`)).json()) as unknown[];
-  expect(pre).toHaveLength(2); // only the two login links so far
+  expect(pre).toHaveLength(1); // only the admin's login link so far (the student signed up without email)
   await page.getByRole('button', { name: 'Preview and submit score' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Send to student' }).click();
   await expect(page.getByText('Score submitted and the result email was sent.')).toBeVisible();
@@ -174,11 +174,11 @@ test('student submits an essay; admin scores it with Claude and an external tool
 
   // ---- The student sees the final score and the rewrite request ----
   await page.getByRole('button', { name: 'Log out' }).click();
-  await page.request.post(`${API}/`, {
-    headers: { 'Content-Type': 'text/plain' },
-    data: JSON.stringify({ action: 'auth.requestLink', payload: { email: STUDENT_EMAIL } }),
-  });
-  await openLoginLink(page, STUDENT_EMAIL);
+  await page.goto('#/login');
+  await page.getByLabel('Email address').fill(STUDENT_EMAIL);
+  await page.getByLabel('Password').fill(STUDENT_PASSWORD);
+  await page.getByRole('button', { name: 'Log in', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
   await page.goto(essayUrl);
   await expect(page.locator('.band-hero strong')).toHaveText('6.0');
   await expect(page.getByRole('heading', { name: 'Rewrite required' })).toBeVisible();

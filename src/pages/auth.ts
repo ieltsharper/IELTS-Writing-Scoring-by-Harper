@@ -1,4 +1,4 @@
-// Login (emailed link), sign up, the login-link callback and the privacy notice.
+// Login (password, or an emailed link as a backup), sign up, the login-link callback and the privacy notice.
 import { api, ApiClientError } from '../api';
 import { h, replace } from '../dom';
 import { navigate, type RouteContext } from '../router';
@@ -24,40 +24,101 @@ function centered(section: HTMLElement): HTMLElement {
   return section;
 }
 
+interface SessionResponse {
+  sessionToken: string;
+  user: SessionUser;
+}
+
+function enterSite(res: SessionResponse) {
+  setSession(res.sessionToken, res.user);
+  navigate(res.user.role === 'admin' ? '/admin' : '/dashboard', { replace: true });
+}
+
+function passwordInput(name: string, autocomplete: 'current-password' | 'new-password') {
+  return h('input', { type: 'password', name, autocomplete, required: true, maxlength: '128' });
+}
+
 export function loginPage(ctx: RouteContext): Node {
   const expired = ctx.query.get('expired')
     ? notice('warning', 'Your session has ended. Please log in again.')
     : null;
   const email = h('input', { type: 'email', name: 'email', autocomplete: 'email', required: true });
+  const password = passwordInput('password', 'current-password');
   const status = h('div', { 'aria-live': 'polite' });
-  const submit = h('button', { type: 'submit', class: 'btn btn-primary' }, 'Email me a login link');
+  const submit = h('button', { type: 'submit', class: 'btn btn-primary' }, 'Log in');
   const form = h(
     'form',
     { class: 'card narrow', novalidate: true },
     field({ label: 'Email address', control: email, name: 'email' }),
+    field({ label: 'Password', control: password, name: 'password' }),
     submit,
     status,
   );
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    if (!email.value.trim()) return showFieldErrors(form, { email: 'Enter your email address' });
-    showFieldErrors(form, {});
-    void busy(submit, 'Sending…', async () => {
+    const errors: Record<string, string> = {};
+    if (!email.value.trim()) errors.email = 'Enter your email address';
+    if (!password.value) errors.password = 'Enter your password';
+    showFieldErrors(form, errors);
+    if (Object.keys(errors).length) return;
+    void busy(submit, 'Logging in…', async () => {
       try {
-        const res = await api<{ message: string }>('auth.requestLink', { email: email.value });
-        replace(status, notice('success', res.message));
+        enterSite(
+          await api<SessionResponse>('auth.login', {
+            email: email.value,
+            password: password.value,
+          }),
+        );
       } catch (err) {
         if (err instanceof ApiClientError && err.fields) showFieldErrors(form, err.fields);
         replace(status, errorBox(err));
       }
     });
   });
+
+  // Backup for a forgotten password: a one-time link to the same email address.
+  const linkStatus = h('div', { 'aria-live': 'polite' });
+  const linkBtn = h('button', { type: 'button', class: 'btn' }, 'Email me a login link');
+  linkBtn.addEventListener('click', () => {
+    if (!email.value.trim()) {
+      showFieldErrors(form, { email: 'Enter your email address' });
+      return;
+    }
+    showFieldErrors(form, {});
+    void busy(linkBtn, 'Sending…', async () => {
+      try {
+        const res = await api<{ message: string }>('auth.requestLink', { email: email.value });
+        replace(
+          linkStatus,
+          notice(
+            'success',
+            h('p', null, res.message),
+            h('p', null, 'If it is not in your inbox, check the Spam folder.'),
+          ),
+        );
+      } catch (err) {
+        replace(linkStatus, errorBox(err));
+      }
+    });
+  });
+  const forgot = h(
+    'details',
+    { class: 'card narrow' },
+    h('summary', null, 'Forgot your password?'),
+    h(
+      'p',
+      null,
+      'Ask your teacher to set a new one, or enter your email above and we will send you a one-time login link. You can then choose a new password in Settings.',
+    ),
+    linkBtn,
+    linkStatus,
+  );
   return centered(
     page(
       'Log in',
       expired,
-      h('p', null, 'There are no passwords. Enter your email and we will send you a login link.'),
       form,
+      forgot,
       h('p', null, 'New here? ', link('/signup', 'Create an account'), '.'),
     ),
   );
@@ -80,6 +141,7 @@ export function signupPage(): Node {
           autocomplete: 'email',
           required: true,
         });
+        const password = passwordInput('password', 'new-password');
         const cls = selectEl(
           'classId',
           config.classes.map((c) => ({ value: c.id, label: c.label })),
@@ -94,6 +156,12 @@ export function signupPage(): Node {
           { class: 'card narrow', novalidate: true },
           field({ label: 'Full name', control: name, name: 'name' }),
           field({ label: 'Email address', control: email, name: 'email' }),
+          field({
+            label: 'Choose a password',
+            control: password,
+            name: 'password',
+            hint: 'At least 8 characters. You will use it with your email to log in.',
+          }),
           field({ label: 'Class', control: cls, name: 'classId' }),
           h(
             'div',
@@ -116,26 +184,22 @@ export function signupPage(): Node {
           const errors: Record<string, string> = {};
           if (name.value.trim().length < 2) errors.name = 'Enter your full name';
           if (!email.value.trim()) errors.email = 'Enter your email address';
+          if (password.value.length < 8) errors.password = 'Use at least 8 characters';
           if (!cls.value) errors.classId = 'Choose your class';
           if (!consent.checked) errors.consent = 'Please agree to the privacy notice to continue.';
           showFieldErrors(form, errors);
           if (Object.keys(errors).length) return;
           void busy(submit, 'Signing up…', async () => {
             try {
-              const res = await api<{ message: string }>('auth.signup', {
-                name: name.value,
-                email: email.value,
-                classId: cls.value,
-                consent: true,
-                timezone: localTimeZone(),
-              });
-              replace(
-                form,
-                notice(
-                  'success',
-                  h('p', null, res.message),
-                  h('p', null, 'Check your inbox and open the link to log in.'),
-                ),
+              enterSite(
+                await api<SessionResponse>('auth.signup', {
+                  name: name.value,
+                  email: email.value,
+                  password: password.value,
+                  classId: cls.value,
+                  consent: true,
+                  timezone: localTimeZone(),
+                }),
               );
             } catch (err) {
               if (err instanceof ApiClientError) showFieldErrors(form, err.fields);
@@ -192,7 +256,7 @@ export function privacyPage(): Node {
       h(
         'p',
         null,
-        'There are no passwords. Login links work once and expire after 15 minutes. Your session is kept in this browser for 30 days or until you log out.',
+        'You log in with your email and password. Passwords are stored only as a salted hash, never as plain text. A login link sent by email works once and expires after 15 minutes. Your session is kept in this browser for 30 days or until you log out.',
       ),
     ),
   );

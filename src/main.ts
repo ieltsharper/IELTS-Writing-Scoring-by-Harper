@@ -84,7 +84,17 @@ function renderHeader() {
     'nav',
     { id: 'site-nav', 'aria-label': 'Main' },
     h('ul', null, ...items.map(navLink)),
-    user ? h('div', { class: 'user-box' }, h('span', null, user.name), logout) : null,
+    user
+      ? h(
+          'div',
+          { class: 'user-box' },
+          // Students have Settings in the menu; the admin reaches it (e.g. to set a password) here.
+          user.role === 'admin'
+            ? h('a', { href: '#/settings', title: 'Settings' }, user.name)
+            : h('span', null, user.name),
+          logout,
+        )
+      : null,
   );
   toggle.addEventListener('click', () => {
     const open = toggle.getAttribute('aria-expanded') === 'true';

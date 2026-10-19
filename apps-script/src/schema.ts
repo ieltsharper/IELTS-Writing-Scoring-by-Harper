@@ -13,6 +13,7 @@ export const SCHEMA = {
     'timezone',
     'consent_at',
     'created_at',
+    'password_hash',
   ],
   Classes: ['id', 'label', 'active'],
   LoginTokens: ['token_hash', 'user_id', 'expires_at', 'used_at'],

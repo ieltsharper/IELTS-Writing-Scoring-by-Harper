@@ -1,5 +1,5 @@
-// Passwordless login: emailed single-use links and 30-day sessions.
-// Only SHA-256 hashes of tokens are stored.
+// Login with email and password, or with an emailed single-use link; 30-day sessions.
+// Only SHA-256 hashes of tokens are stored; passwords are salted and hashed many times.
 import { ApiError, appUrl, type Ctx, isAdminEmail, type UserRow } from './context';
 import { loginEmail } from './emailTemplates';
 import { type EmailJob, sendEmail } from './email';
@@ -9,6 +9,12 @@ export const SESSION_DAYS = 30;
 export const RATE_PER_EMAIL = 3;
 export const RATE_GLOBAL = 30;
 export const LOGIN_LINK_MESSAGE = 'If that email is registered, a link is on its way.';
+export const PASSWORD_MIN = 8;
+export const PASSWORD_MAX = 128;
+export const PASSWORD_ROUNDS = 1000;
+export const RATE_LOGIN_PER_EMAIL = 10;
+export const RATE_LOGIN_GLOBAL = 300;
+export const BAD_LOGIN_MESSAGE = 'The email or password is incorrect.';
 
 export interface AuthUser {
   id: string;
@@ -89,6 +95,93 @@ export function requestLoginLink(ctx: Ctx, email: string): { message: string } {
   return { message: LOGIN_LINK_MESSAGE };
 }
 
+/** Stored as "v1$rounds$salt$hash" so the number of rounds can change later. */
+export function hashPassword(
+  ctx: Ctx,
+  password: string,
+  salt = ctx.svc.uuid().replace(/-/g, ''),
+  rounds = PASSWORD_ROUNDS,
+): string {
+  let hash = ctx.svc.sha256Hex(`${salt}:${password}`);
+  for (let i = 1; i < rounds; i++) hash = ctx.svc.sha256Hex(hash + salt);
+  return ['v1', rounds, salt, hash].join('$');
+}
+
+export function verifyPassword(ctx: Ctx, password: string, stored: string): boolean {
+  const [version, rounds, salt, hash] = (stored || '').split('$');
+  const n = Number(rounds);
+  if (version !== 'v1' || !salt || !hash || !Number.isInteger(n) || n < 1 || n > 100000) {
+    return false;
+  }
+  const candidate = hashPassword(ctx, password, salt, n).split('$')[3];
+  let diff = candidate.length ^ hash.length;
+  for (let i = 0; i < Math.min(candidate.length, hash.length); i++) {
+    diff |= candidate.charCodeAt(i) ^ hash.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+/**
+ * An account without a password that nobody has used yet: no login so far and no essay the
+ * student wrote. Whoever signs up with that email may choose its password. This lets students
+ * whose login email never arrived (and students the teacher added) finish signing up.
+ */
+export function isUnclaimed(ctx: Ctx, user: UserRow): boolean {
+  if (user.password_hash || isAdminEmail(ctx, user.email)) return false;
+  if (ctx.db.findOne('Sessions', (s) => s.user_id === user.id)) return false;
+  if (ctx.db.findOne('LoginTokens', (t) => t.user_id === user.id && !!t.used_at)) return false;
+  return !ctx.db.findOne(
+    'Essays',
+    (e) => e.student_id === user.id && e.source !== 'admin' && !e.source.startsWith('portal:'),
+  );
+}
+
+export function createSession(
+  ctx: Ctx,
+  userRow: UserRow,
+): { sessionToken: string; user: AuthUser } {
+  const nowMs = ctx.now.getTime();
+  // Housekeeping: drop expired tokens and sessions.
+  ctx.db.remove('LoginTokens', (t) => Date.parse(t.expires_at) < nowMs - 86400000);
+  ctx.db.remove('Sessions', (s) => Date.parse(s.expires_at) < nowMs);
+  const sessionToken = newToken(ctx);
+  ctx.db.insert('Sessions', {
+    token_hash: ctx.svc.sha256Hex(sessionToken),
+    user_id: userRow.id,
+    expires_at: new Date(nowMs + SESSION_DAYS * 86400000).toISOString(),
+    created_at: ctx.nowIso,
+  });
+  return { sessionToken, user: toAuthUser(ctx, userRow) };
+}
+
+export function passwordLogin(
+  ctx: Ctx,
+  email: string,
+  password: string,
+): { sessionToken: string; user: AuthUser } {
+  const normalized = email.trim().toLowerCase();
+  const emailKey = `rl:pw:${ctx.svc.sha256Hex(normalized).slice(0, 32)}`;
+  if (
+    !takeRate(ctx, 'rl:pw:global', RATE_LOGIN_GLOBAL) ||
+    !takeRate(ctx, emailKey, RATE_LOGIN_PER_EMAIL)
+  ) {
+    throw new ApiError('limit', 'Too many login attempts. Please wait an hour and try again.');
+  }
+  const user = ctx.db.findOne('Users', (u) => u.email.toLowerCase() === normalized);
+  if (user && !user.password_hash) {
+    throw new ApiError(
+      'unauthenticated',
+      isUnclaimed(ctx, user)
+        ? 'This account has no password yet. Use Sign up with the same email to choose one.'
+        : 'This account has no password yet. Use “Email me a login link” below, or ask your teacher to set a password for you.',
+    );
+  }
+  if (!user || !verifyPassword(ctx, password, user.password_hash)) {
+    throw new ApiError('unauthenticated', BAD_LOGIN_MESSAGE);
+  }
+  return createSession(ctx, user);
+}
+
 export function exchangeLoginToken(
   ctx: Ctx,
   token: string,
@@ -104,19 +197,7 @@ export function exchangeLoginToken(
   const userRow = ctx.db.byId('Users', row.user_id);
   if (!userRow) throw new ApiError('unauthenticated', 'This account no longer exists.');
   ctx.db.update('LoginTokens', (t) => t.token_hash === hash, { used_at: ctx.nowIso });
-  // Housekeeping: drop expired tokens and sessions.
-  const nowMs = ctx.now.getTime();
-  ctx.db.remove('LoginTokens', (t) => Date.parse(t.expires_at) < nowMs - 86400000);
-  ctx.db.remove('Sessions', (s) => Date.parse(s.expires_at) < nowMs);
-
-  const sessionToken = newToken(ctx);
-  ctx.db.insert('Sessions', {
-    token_hash: ctx.svc.sha256Hex(sessionToken),
-    user_id: userRow.id,
-    expires_at: new Date(nowMs + SESSION_DAYS * 86400000).toISOString(),
-    created_at: ctx.nowIso,
-  });
-  return { sessionToken, user: toAuthUser(ctx, userRow) };
+  return createSession(ctx, userRow);
 }
 
 export function userFromSession(ctx: Ctx, sessionToken: string | undefined): AuthUser | null {

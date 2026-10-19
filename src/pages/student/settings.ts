@@ -1,4 +1,4 @@
-// Settings: name, target band, exam date, time zone, and account deletion.
+// Settings: name, target band, exam date, time zone, password, and account deletion.
 import { api, ApiClientError } from '../../api';
 import { h, replace } from '../../dom';
 import { navigate } from '../../router';
@@ -76,6 +76,8 @@ export function settingsPage(): Node {
     });
   });
 
+  const pwForm = passwordForm();
+
   const confirmInput = h('input', { name: 'confirm', autocomplete: 'off' });
   const delStatus = h('div', { 'aria-live': 'polite' });
   const delBtn = h(
@@ -118,5 +120,67 @@ export function settingsPage(): Node {
     });
   });
 
-  return page('Settings', form, user.role === 'student' ? delForm : null);
+  return page('Settings', form, pwForm, user.role === 'student' ? delForm : null);
+}
+
+/** Set a first password (after a login link) or change the current one. */
+function passwordForm(message?: Node): HTMLElement {
+  const hasPassword = getUser()?.hasPassword ?? false;
+  const current = h('input', {
+    type: 'password',
+    name: 'currentPassword',
+    autocomplete: 'current-password',
+    maxlength: '128',
+  });
+  const next = h('input', {
+    type: 'password',
+    name: 'newPassword',
+    autocomplete: 'new-password',
+    maxlength: '128',
+  });
+  const status = h('div', { 'aria-live': 'polite' }, message ?? null);
+  const save = h(
+    'button',
+    { type: 'submit', class: 'btn btn-primary' },
+    hasPassword ? 'Change password' : 'Set password',
+  );
+  const form = h(
+    'form',
+    { class: 'card narrow', novalidate: true },
+    h('h2', null, 'Password'),
+    hasPassword
+      ? null
+      : h('p', null, 'Choose a password so you can log in with your email and password next time.'),
+    hasPassword
+      ? field({ label: 'Current password', control: current, name: 'currentPassword' })
+      : null,
+    field({
+      label: 'New password',
+      control: next,
+      name: 'newPassword',
+      hint: 'At least 8 characters.',
+    }),
+    save,
+    status,
+  );
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (next.value.length < 8) {
+      return showFieldErrors(form, { newPassword: 'Use at least 8 characters' });
+    }
+    void busy(save, 'Saving…', async () => {
+      try {
+        const updated = await api<SessionUser>('me.setPassword', {
+          currentPassword: hasPassword ? current.value : undefined,
+          newPassword: next.value,
+        });
+        setUser(updated);
+        form.replaceWith(passwordForm(notice('success', 'Password saved.')));
+      } catch (err) {
+        if (err instanceof ApiClientError) showFieldErrors(form, err.fields);
+        replace(status, errorBox(err));
+      }
+    });
+  });
+  return form;
 }

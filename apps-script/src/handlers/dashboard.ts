@@ -167,6 +167,7 @@ function studentsList(ctx: Ctx) {
             .pop() ?? null,
         overdueRewrites: overdue,
         targetBand: num(u.target_band),
+        hasPassword: !!u.password_hash,
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name));

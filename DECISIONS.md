@@ -59,7 +59,18 @@ No service in the spec was replaced; everything runs on GitHub Pages, Apps Scrip
   same shape, valid 30 days. Only SHA-256 hashes are stored. The login link is removed from the address bar and history
   as soon as the page loads, and `<meta name="referrer" content="no-referrer">` keeps it out of referrers.
 - **Rate limits** (CacheService, fixed one-hour windows): 3 login links per email, 30 overall, and 30 new sign-ups per
-  hour. Every login/sign-up request gets the same "If that email is registered…" message.
+  hour. Every login-link request gets the same "If that email is registered…" message.
+- **Passwords (change from the spec's passwordless login).** Login emails often went to Spam or never arrived, so
+  sign-up now takes a password and logs the student straight in; login is email + password. The emailed link stays as
+  a backup ("Forgot your password?"). Passwords are stored as `v1$rounds$salt$hash` (random salt, 1000 rounds of
+  SHA-256 via `Utilities.computeDigest`; Apps Script has no bcrypt/PBKDF2), compared in constant time, and never
+  returned to the browser. Password attempts are limited to 10 per email and 300 overall per hour.
+- **Claiming an existing account.** An account with no password that nobody has used (no session, no used login link,
+  no essay the student wrote) can be claimed by signing up with its email: this covers students whose first login
+  email never arrived and students the teacher added. Any other existing email gets "already has an account. Log in
+  instead", which does reveal that the email is registered; that trade-off is accepted for a class app. The teacher
+  can set a password for any student (Students → student → Set a password); everyone can set or change theirs in
+  Settings (the admin reaches Settings by clicking their name in the header).
 - **Content-Security-Policy** meta tag in the production build (GitHub Pages cannot send headers): scripts only from
   the site, network only to `script.google.com` / `script.googleusercontent.com`, images only from the site or `data:`.
 - **Images** are validated on both sides (PNG/JPEG by magic bytes, ≤ 5 MB) and only ever displayed as
@@ -151,8 +162,8 @@ No service in the spec was replaced; everything runs on GitHub Pages, Apps Scrip
 ## Look and feel
 
 - **Name: IELTS Harper.** Used in the header, page titles, the email footer and the Gmail sender name.
-- **Bright orange (#f97316) brand.** Text on orange is near-black because white on bright orange fails WCAG contrast;
-  links, focus rings and email buttons use a deeper orange (#c2410c), which passes with white text.
+- **Orange and white.** The brand orange is #d2450b, the brightest orange where white text still passes WCAG AA
+  (4.5:1); links, focus rings and email buttons use #c2410c. Backgrounds are white or a faint warm white.
 - **Criterion colours are used consistently**: red TA/TR, orange CC, blue LR, purple GRA for error highlights, feedback
   cards, error badges and the "Average by criterion" chart.
 - The scoring page uses the full screen width with three panels; reconcile notes are collapsed by default.

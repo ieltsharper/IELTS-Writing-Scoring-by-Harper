@@ -10,6 +10,7 @@ export interface SessionUser {
   targetBand: number | null;
   examDate: string;
   timezone: string;
+  hasPassword?: boolean;
 }
 
 const TOKEN_KEY = 'ielts.session';

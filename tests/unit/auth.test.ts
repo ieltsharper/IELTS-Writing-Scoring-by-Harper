@@ -3,19 +3,11 @@ import { callApi } from '../../apps-script/src/api';
 import { createTestApp } from '../helpers';
 
 describe('login links and sessions', () => {
-  it('signs up, emails a single-use link and creates a session', () => {
+  it('emails a single-use link and creates a session', () => {
     const app = createTestApp();
-    const classId = app.call('config.get').classes[0].id;
-    const res = app.call('auth.signup', {
-      name: 'Le Thi Hoa',
-      email: 'Hoa@Example.com',
-      classId,
-      consent: true,
-      timezone: 'Asia/Ho_Chi_Minh',
-    });
-    expect(res.message).toMatch(/If that email is registered/);
+    app.call('auth.requestLink', { email: 'Demo.An@Example.com' });
     const mail = app.svc.mail.outbox.at(-1)!;
-    expect(mail.to).toBe('hoa@example.com');
+    expect(mail.to).toBe('demo.an@example.com');
     const token = /token=([a-f0-9]+)/.exec(mail.text)![1];
     expect(token).toHaveLength(64);
 
@@ -32,7 +24,7 @@ describe('login links and sessions', () => {
         .all('Sessions')
         .some((s) => s.token_hash === sessionToken),
     ).toBe(false);
-    expect(app.call('me.get', {}, sessionToken).email).toBe('hoa@example.com');
+    expect(app.call('me.get', {}, sessionToken).email).toBe('demo.an@example.com');
 
     // Single use.
     expect(() => app.call('auth.exchange', { token })).toThrow(/invalid or has expired/);
@@ -47,6 +39,7 @@ describe('login links and sessions', () => {
       const fields = (err as { fields: Record<string, string> }).fields;
       expect(fields.consent).toBeDefined();
       expect(fields.classId).toBeDefined();
+      expect(fields.password).toBeDefined();
     }
   });
 
@@ -80,18 +73,21 @@ describe('login links and sessions', () => {
     expect(app.svc.mail.outbox.filter((m) => m.to === 'demo.binh@example.com')).toHaveLength(0);
   });
 
-  it('limits new sign-ups per hour without revealing it', () => {
+  it('limits new sign-ups per hour', () => {
     const app = createTestApp();
     const classId = app.call('config.get').classes[0].id;
+    let refused = 0;
     for (let i = 0; i < 35; i++) {
-      const res = app.call('auth.signup', {
+      const res = app.raw('auth.signup', {
         name: `User ${i}`,
         email: `u${i}@example.com`,
+        password: 'long enough',
         classId,
         consent: true,
       });
-      expect(res.message).toMatch(/If that email is registered/);
+      if (!res.ok) refused++;
     }
+    expect(refused).toBe(5);
     expect(app.db().find('Users', (u) => u.email.startsWith('u'))).toHaveLength(30);
   });
 
