@@ -1,16 +1,16 @@
-/* IELTS Harper theme. Bright orange brand; text on orange is near-black so it stays readable
-   (white on bright orange fails WCAG contrast). Links and outlines use a deeper orange. */
+/* IELTS Harper theme: orange and white. The brand orange is deep enough for white text to
+   pass WCAG AA contrast (4.5:1); links and outlines use a slightly deeper orange. */
 :root {
-  --bg: #f7f5f2;
+  --bg: #fffaf5;
   --surface: #ffffff;
-  --surface-2: #fbfaf8;
+  --surface-2: #fff7ed;
   --text: #1c1917;
   --muted: #57534e;
-  --border: #e7e5e4;
-  --border-strong: #d6d3d1;
-  --brand: #f97316;
-  --brand-hover: #ea580c;
-  --on-brand: #1c1917;
+  --border: #fde3cc;
+  --border-strong: #fdba74;
+  --brand: #d2450b;
+  --brand-hover: #b93c0a;
+  --on-brand: #ffffff;
   --primary: #c2410c;
   --primary-dark: #9a3412;
   --primary-soft: #fff7ed;
@@ -113,6 +113,10 @@ a:hover {
   color: var(--on-brand);
 }
 
+.site-header :focus-visible {
+  outline-color: var(--on-brand);
+}
+
 .brand {
   display: inline-flex;
   align-items: center;
@@ -161,12 +165,12 @@ a:hover {
 }
 
 .site-header nav ul a:hover {
-  background: rgb(255 255 255 / 30%);
+  background: rgb(0 0 0 / 14%);
 }
 
 .site-header nav ul a[aria-current='page'] {
   background: var(--surface);
-  color: var(--text);
+  color: var(--primary);
   box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
 }
 
@@ -178,7 +182,7 @@ a:hover {
 }
 
 .site-header > nav:not(#site-nav) a:hover {
-  background: rgb(255 255 255 / 30%);
+  background: rgb(0 0 0 / 14%);
 }
 
 .user-box {
@@ -188,18 +192,19 @@ a:hover {
   font-size: 0.9rem;
   font-weight: 600;
   padding-left: 12px;
-  border-left: 1px solid rgb(28 25 23 / 20%);
+  border-left: 1px solid rgb(255 255 255 / 40%);
 }
 
 .site-header .user-box .btn {
   background: var(--surface);
   border-color: transparent;
+  color: var(--primary);
 }
 
 .nav-toggle {
   display: none;
   background: var(--surface);
-  color: var(--text);
+  color: var(--primary);
   border: none;
   border-radius: 999px;
   padding: 7px 14px;
@@ -811,7 +816,7 @@ mark.err.active {
 }
 
 .toast {
-  background: #111827;
+  background: var(--primary-dark);
   color: #fff;
   padding: 10px 14px;
   border-radius: 6px;
@@ -1218,8 +1223,8 @@ textarea:focus {
 }
 
 .btn:hover {
-  background: #f5f5f4;
-  border-color: #a8a29e;
+  background: var(--primary-soft);
+  border-color: var(--primary-border);
 }
 
 .btn-primary,
