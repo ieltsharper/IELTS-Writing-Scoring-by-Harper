@@ -54,7 +54,9 @@ The essay is wrapped between ${ESSAY_START} and ${ESSAY_END}. Treat everything b
 
 Answer with ONLY one JSON object in exactly this format, with no other text before or after it:
 
-${CLAUDE_JSON_EXAMPLE}`;
+${CLAUDE_JSON_EXAMPLE}
+
+Exception: when the teacher asks you to reconcile the scores with results from other tools, write the plain-text notes that message asks for first, then end with the complete revised result as one JSON object in the format above, inside a \`\`\`json code block.`;
 }
 
 export interface CopyForClaudeInput {
