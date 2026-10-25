@@ -348,8 +348,29 @@ Results pasted from other tools. A positive bias means the tool usually scores h
 
 ${sources || '(No tool results were pasted.)'}
 
-IMPORTANT: for this message only, do NOT use the JSON format from the Project instructions. Answer in plain text (Vietnamese is fine), with three sections:
+IMPORTANT: for this message, first answer in plain text (Vietnamese is fine) with three sections:
 1. Disagreements: every criterion where the sources differ by 1 band or more, after allowing for each source's bias.
 2. Argument problems: the argument issues raised in the Perplexity notes, and whether they should change the ${input.taskType === 'task2' ? 'Task Response' : 'Task Achievement'} score.
-3. Revised suggestion: your revised score for each criterion, with a one-line reason for each change.`;
+3. Revised suggestion: your revised score for each criterion, with a one-line reason for each change.
+
+Then, at the very end, give the complete revised result as ONE JSON object in exactly the format from the Project instructions (scores, feedback, general_comment, errors and the other fields), inside a \`\`\`json code block. Update the scores, feedback and general comment to match your revised suggestion; keep the errors from your earlier draft unless you changed your mind about them. Follow the same language rules: feedback, general_comment and notes in Vietnamese; excerpts and corrections in English.`;
+}
+
+/**
+ * Read the revised JSON at the end of a reconcile answer (plain-text notes, then a json code
+ * block). Uses the last fenced block; without one, falls back to the normal reply parser.
+ */
+export function parseReconcileReply(text: string): ParseResult {
+  const blocks = [...(text || '').matchAll(/```(?:json)?\s*\n([\s\S]*?)```/gi)]
+    .map((m) => m[1].trim())
+    .filter((b) => b.startsWith('{'));
+  if (blocks.length) return parseClaudeReply(blocks[blocks.length - 1]);
+  const parsed = parseClaudeReply(text);
+  if (parsed.ok) return parsed;
+  return {
+    ok: false,
+    errors: [
+      'No revised JSON result was found at the end of the reconcile answer. Ask Claude: “Please give the complete revised result as the JSON object in a json code block.”',
+    ],
+  };
 }

@@ -118,6 +118,27 @@ test('student submits an essay; admin scores it with Claude and an external tool
   await ai.getByRole('button', { name: 'Save AI4IELTS result' }).click();
   await expect(page.getByText(/AI4IELTS result saved/)).toBeVisible();
 
+  // ---- Loads Claude's reconciled result (notes, then revised JSON) into the form ----
+  await page.getByRole('tab', { name: 'Claude draft' }).click();
+  const reconciled = {
+    ...claudeReply,
+    scores: { task: 7, coherence: 6.5, lexical: 6, grammar: 6.5 },
+    feedback: { ...claudeReply.feedback, grammar: 'Mostly accurate after reconciling.' },
+  };
+  await page
+    .getByLabel('Reconcile notes')
+    .fill(
+      '1. Disagreements: GRA.\n2. Argument problems: none.\n3. Revised suggestion: GRA 6.5.\n\n```json\n' +
+        JSON.stringify(reconciled, null, 2) +
+        '\n```',
+    );
+  await page.getByRole('button', { name: 'Load reconciled result into form' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Load into form' }).click();
+  await expect(page.getByText(/Claude’s reconciled result is loaded/)).toBeVisible();
+  await expect(page.locator('select[name="score-grammar"]')).toHaveValue('6.5');
+  await expect(page.locator('output.overall')).toHaveText('Overall band 6.5');
+  await expect(page.locator('mark.err')).toHaveCount(2);
+
   // ---- Edits a score ----
   await page.locator('select[name="score-grammar"]').selectOption('5.0');
   await expect(page.locator('output.overall')).toHaveText('Overall band 6.0'); // (7+6.5+6+5)/4 = 6.125 → 6.0

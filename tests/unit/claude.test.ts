@@ -7,6 +7,7 @@ import {
   matchClaudeErrors,
   matchTopic,
   parseClaudeReply,
+  parseReconcileReply,
   stripCodeFences,
 } from '../../shared/claude';
 
@@ -164,8 +165,25 @@ describe('Copy for Claude', () => {
     expect(text).toContain('AI4IELTS');
     expect(text).toContain('+0.60');
     expect(text).toContain('Revised suggestion');
-    // The Project instructions demand JSON; the reconcile answer must be plain text.
-    expect(text).toContain('do NOT use the JSON format');
+    // Plain-text notes first, then the revised result as JSON that the form can load.
+    expect(text).toContain('first answer in plain text');
+    expect(text).toContain('```json code block');
+  });
+
+  it('reads the revised JSON at the end of a reconcile answer', () => {
+    const revised = { ...valid, scores: { task: 7, coherence: 6.5, lexical: 6, grammar: 6 } };
+    const answer = `1. Disagreements: TR differs.\n2. Argument problems: {none}\n3. Revised suggestion: TR 7.\n\n\`\`\`json\n${JSON.stringify(valid)}\n\`\`\`\nOops, corrected:\n\`\`\`json\n${JSON.stringify(revised)}\n\`\`\``;
+    const parsed = parseReconcileReply(answer);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.value.scores.task).toBe(7);
+      expect(parsed.value.overall).toBe(6.5);
+    }
+    // Bare JSON (no fences) still works.
+    expect(parseReconcileReply(JSON.stringify(revised)).ok).toBe(true);
+    const none = parseReconcileReply('1. Disagreements: none.\n3. Revised suggestion: keep 6.0.');
+    expect(none.ok).toBe(false);
+    if (!none.ok) expect(none.errors[0]).toMatch(/No revised JSON/);
   });
 });
 

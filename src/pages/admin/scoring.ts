@@ -7,6 +7,7 @@ import {
   matchClaudeErrors,
   matchTopic,
   parseClaudeReply,
+  parseReconcileReply,
 } from '../../../shared/claude';
 import {
   CRITERIA,
@@ -849,10 +850,11 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
     onParsed: (draft) => {
       lastDraft = draft;
     },
-    onLoad: async (draft) => {
+    onLoad: async (draft, kind) => {
+      const what = kind === 'reconciled' ? 'Claude’s reconciled result' : 'Claude’s draft';
       if (state.errors.length || CRITERIA.some((c) => state.scores[c] !== null)) {
         const ok = await confirmDialog({
-          title: 'Replace the form with Claude’s draft?',
+          title: `Replace the form with ${what}?`,
           message:
             'Scores, feedback and tagged errors in the form will be replaced. Nothing is sent to the student.',
           confirmLabel: 'Load into form',
@@ -897,7 +899,7 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
           h(
             'p',
             null,
-            'Claude’s draft is loaded into the form. Review and edit before submitting.',
+            `${what.charAt(0).toUpperCase()}${what.slice(1)} is loaded into the form. Review and edit before submitting.`,
           ),
           flagged ? h('p', null, `${flagged} error(s) use an unknown category: choose one.`) : null,
           unplaced
@@ -1163,7 +1165,7 @@ function buildClaudePanel(opts: {
   data: AdminEssayResponse;
   claudePromptText: () => string;
   onParsed: (draft: ClaudeDraft) => void;
-  onLoad: (draft: ClaudeDraft) => void;
+  onLoad: (draft: ClaudeDraft, kind: 'draft' | 'reconciled') => void;
   onReconcileCopy: () => void;
   onReconcileSaved: (text: string, at: string) => void;
 }) {
@@ -1190,7 +1192,7 @@ function buildClaudePanel(opts: {
       essay.body,
     );
     const load = h('button', { type: 'button', class: 'btn btn-primary' }, 'Load into form');
-    load.addEventListener('click', () => opts.onLoad(draft));
+    load.addEventListener('click', () => opts.onLoad(draft, 'draft'));
     replace(
       result,
       notice(
@@ -1268,15 +1270,18 @@ function buildClaudePanel(opts: {
   const reconcileStatus = h('div', { 'aria-live': 'polite' });
   const copyReconcile = h('button', { type: 'button', class: 'btn' }, 'Copy reconcile prompt');
   copyReconcile.addEventListener('click', () => opts.onReconcileCopy());
+  const saveNotes = async () => {
+    const res = await api<{ createdAt: string }>('admin.saveReconcile', {
+      essayId: essay.id,
+      rawText: reconcileText.value,
+    });
+    opts.onReconcileSaved(reconcileText.value, res.createdAt);
+  };
   const saveReconcile = h('button', { type: 'button', class: 'btn' }, 'Save reconcile notes');
   saveReconcile.addEventListener('click', () =>
     busy(saveReconcile, 'Saving…', async () => {
       try {
-        const res = await api<{ createdAt: string }>('admin.saveReconcile', {
-          essayId: essay.id,
-          rawText: reconcileText.value,
-        });
-        opts.onReconcileSaved(reconcileText.value, res.createdAt);
+        await saveNotes();
         replace(
           reconcileStatus,
           notice('success', 'Reconcile notes saved. They never change the form automatically.'),
@@ -1286,6 +1291,41 @@ function buildClaudePanel(opts: {
       }
     }),
   );
+  // Loads the revised JSON at the end of Claude's reconcile answer (and saves the notes too).
+  const loadReconciled = h(
+    'button',
+    { type: 'button', class: 'btn btn-primary' },
+    'Load reconciled result into form',
+  );
+  loadReconciled.addEventListener('click', () => {
+    const parsed = parseReconcileReply(reconcileText.value);
+    if (!parsed.ok) {
+      replace(
+        reconcileStatus,
+        notice(
+          'error',
+          h('p', null, h('strong', null, 'Nothing was loaded.')),
+          h('ul', null, ...parsed.errors.map((e) => h('li', null, e))),
+        ),
+      );
+      return;
+    }
+    void busy(loadReconciled, 'Loading…', async () => {
+      try {
+        await saveNotes();
+        replace(
+          reconcileStatus,
+          notice(
+            'success',
+            `Reconciled result: overall ${formatBand(parsed.value.overall)} (${CRITERIA.map((c) => `${CRITERION_SHORT[c]} ${formatBand(parsed.value.scores[c])}`).join(' · ')}).`,
+          ),
+        );
+        opts.onLoad(parsed.value, 'reconciled');
+      } catch (err) {
+        replace(reconcileStatus, errorBox(err));
+      }
+    });
+  });
 
   const element = h(
     'div',
@@ -1311,11 +1351,11 @@ function buildClaudePanel(opts: {
     h(
       'p',
       { class: 'hint' },
-      'After pasting the other tools’ results in their tabs, copy this prompt into the same Claude chat and paste the answer below.',
+      'After pasting the other tools’ results in their tabs, copy this prompt into the same Claude chat and paste the whole answer below. Claude ends it with the revised result, which you can load into the form.',
     ),
     copyReconcile,
-    field({ label: 'Reconcile notes (Claude’s answer, plain text)', control: reconcileText }),
-    saveReconcile,
+    field({ label: 'Reconcile notes (Claude’s whole answer)', control: reconcileText }),
+    h('div', { class: 'actions' }, loadReconciled, saveReconcile),
     reconcileStatus,
   );
   return { element, focusPaste: () => reply.focus() };
