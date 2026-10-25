@@ -172,7 +172,7 @@ export function signupPage(): Node {
               { for: 'consent' },
               'I have read the ',
               link('/privacy', 'privacy notice', { target: '_blank' }),
-              ' and agree that my essays are stored in my teacher’s Google account and may be pasted into Claude and other AI tools to help draft feedback. A human reviews every final score.',
+              ' and agree that my essays and scores are stored in my teacher’s Google account.',
             ),
             h('p', { class: 'field-error', 'aria-live': 'polite' }),
           ),
