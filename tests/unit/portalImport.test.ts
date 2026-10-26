@@ -138,3 +138,56 @@ describe('essays imported from IELTS Harper Portal', () => {
     expect(app.db().byId('Essays', res.essayId)!.image_file_id).not.toBe('');
   });
 });
+
+describe('one-time login from IELTS Harper Portal', () => {
+  const signin = (over: Record<string, unknown> = {}) => ({
+    secret: SECRET,
+    studentEmail: 'demo.binh@example.com',
+    studentName: 'Tran Thi Binh',
+    next: '/essays',
+    ...over,
+  });
+  const tokenOf = (url: string) => decodeURIComponent(/token=([^&]+)/.exec(url)![1]);
+
+  it('gives a link that logs the student in once and opens the page asked for', () => {
+    const { app } = setup();
+    const { url } = app.call('portal.signin', signin());
+    expect(url).toMatch(/#\/auth\?token=[^&]+&next=%2Fessays$/);
+    const res = app.call('auth.exchange', { token: tokenOf(url) });
+    expect(res.user).toMatchObject({ email: 'demo.binh@example.com', role: 'student' });
+    expect(app.raw('auth.exchange', { token: tokenOf(url) })).toMatchObject({ ok: false });
+  });
+
+  it('expires after 2 minutes', () => {
+    const { app } = setup();
+    const { url } = app.call('portal.signin', signin());
+    app.svc.advance(3 * 60000);
+    expect(app.raw('auth.exchange', { token: tokenOf(url) })).toMatchObject({ ok: false });
+  });
+
+  it('refuses a wrong secret, an admin email and a page outside Harper', () => {
+    const { app } = setup();
+    expect(app.raw('portal.signin', signin({ secret: 'x'.repeat(64) }))).toMatchObject({
+      ok: false,
+      error: { code: 'forbidden' },
+    });
+    expect(app.raw('portal.signin', signin({ studentEmail: 'admin@example.com' }))).toMatchObject({
+      ok: false,
+    });
+    expect(app.raw('portal.signin', signin({ next: 'https://evil.example/' }))).toMatchObject({
+      ok: false,
+      error: { fields: { next: expect.any(String) } },
+    });
+  });
+
+  it('creates the Harper account of a portal student who has none', () => {
+    const { app } = setup();
+    const { url } = app.call(
+      'portal.signin',
+      signin({ studentEmail: 'new.one@example.com', studentName: 'New One' }),
+    );
+    expect(app.call('auth.exchange', { token: tokenOf(url) }).user.email).toBe(
+      'new.one@example.com',
+    );
+  });
+});

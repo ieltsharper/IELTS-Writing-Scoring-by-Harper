@@ -1,14 +1,18 @@
-// Essays written in IELTS Harper Portal (the daily writing task) arrive here and join the
-// normal queue and scoring flow, exactly like an essay added by the teacher.
+// IELTS Harper Portal, server to server:
+// - portal.essays.import: essays written in the portal (the daily task and students' own
+//   questions) join the normal queue and scoring flow, like an essay added by the teacher.
+//   A retried request with the same submissionId returns the essay created the first time.
+// - portal.signin: a one-time login link for a student signed in to the portal, so they open
+//   Harper without logging in again. Never for an admin account.
 //
-// Server-to-server only: the portal's Apps Script sends the shared secret (Script Property
-// PORTAL_SECRET here, HARPER_SECRET in the portal). Browsers never see it. A retried request
-// with the same submissionId returns the essay created the first time.
+// The portal's Apps Script sends the shared secret (Script Property PORTAL_SECRET here,
+// HARPER_SECRET in the portal). Browsers never see it.
 import { LIMITS, TASK_TYPES, type TaskType } from '../../../shared/constants';
 import { checkImage } from '../../../shared/image';
 import { countWords } from '../../../shared/wordCount';
 import { categoryColumns, readCategory } from '../category';
-import { adminTimezone, ApiError, type Ctx } from '../context';
+import { newToken, takeRate } from '../auth';
+import { adminTimezone, ApiError, appUrl, type Ctx } from '../context';
 import { saveUploadedImage } from '../drive';
 import type { ActionDef } from '../router';
 import { Reader } from '../validate';
@@ -23,13 +27,71 @@ function sameSecret(a: string, b: string): boolean {
   return diff === 0;
 }
 
-function importEssay(ctx: Ctx, payload: unknown) {
+/** Reads and checks the shared secret first, before any other field. */
+function checkSecret(ctx: Ctx, r: Reader) {
   const expected = ctx.svc.props.PORTAL_SECRET ?? '';
-  const r = new Reader(payload);
   const secret = r.str('secret', { max: 200 });
   if (expected.length < 32 || !sameSecret(secret, expected)) {
     throw new ApiError('forbidden', 'Not allowed.');
   }
+}
+
+/** The Harper student with this email; created when they have no account yet. */
+function portalStudent(ctx: Ctx, email: string, name: string) {
+  const student = ctx.db.findOne('Users', (u) => u.email.toLowerCase() === email);
+  if (student && student.role === 'admin') {
+    throw new ApiError('bad_request', 'This email belongs to an admin account.');
+  }
+  if (student) return student;
+  // A portal student without a Harper account: create one (they can also log in to Harper
+  // directly later with this email).
+  return ctx.db.insert('Users', {
+    id: ctx.svc.uuid(),
+    name,
+    email,
+    class: '',
+    role: 'student',
+    target_band: '',
+    exam_date: '',
+    timezone: adminTimezone(ctx),
+    consent_at: '',
+    created_at: ctx.nowIso,
+  });
+}
+
+/** One-time login links from the portal live 2 minutes (the browser opens them at once). */
+export const PORTAL_SIGNIN_MINUTES = 2;
+const PORTAL_SIGNINS_PER_HOUR = 60;
+/** Paths inside Harper the link may open after logging in, e.g. /essays/abc-123. */
+const NEXT_PATH = /^\/[A-Za-z0-9/_-]{0,100}$/;
+
+function signIn(ctx: Ctx, payload: unknown) {
+  const r = new Reader(payload);
+  checkSecret(ctx, r);
+  const email = r.email('studentEmail');
+  const name = r.str('studentName', { max: LIMITS.name, min: 1 });
+  const next = r.str('next', { max: 101, optional: true });
+  if (next && !NEXT_PATH.test(next)) r.addError('next', 'Not a page of IELTS Harper.');
+  r.done();
+  const rateKey = `rl:portal-signin:${ctx.svc.sha256Hex(email).slice(0, 32)}`;
+  if (!takeRate(ctx, rateKey, PORTAL_SIGNINS_PER_HOUR)) {
+    throw new ApiError('limit', 'Too many logins from the portal. Please try again later.');
+  }
+  const student = portalStudent(ctx, email, name);
+  const token = newToken(ctx);
+  ctx.db.insert('LoginTokens', {
+    token_hash: ctx.svc.sha256Hex(token),
+    user_id: student.id,
+    expires_at: new Date(ctx.now.getTime() + PORTAL_SIGNIN_MINUTES * 60000).toISOString(),
+    used_at: '',
+  });
+  const query = `token=${encodeURIComponent(token)}${next ? `&next=${encodeURIComponent(next)}` : ''}`;
+  return { url: appUrl(ctx, `/auth?${query}`) };
+}
+
+function importEssay(ctx: Ctx, payload: unknown) {
+  const r = new Reader(payload);
+  checkSecret(ctx, r);
   const submissionId = r.str('submissionId', { min: 8, max: 64 });
   const email = r.email('studentEmail');
   const name = r.str('studentName', { max: LIMITS.name, min: 1 });
@@ -68,26 +130,7 @@ function importEssay(ctx: Ctx, payload: unknown) {
   const existing = ctx.db.findOne('Essays', (e) => e.source === source);
   if (existing) return { essayId: existing.id, duplicate: true };
 
-  let student = ctx.db.findOne('Users', (u) => u.email.toLowerCase() === email);
-  if (student && student.role === 'admin') {
-    throw new ApiError('bad_request', 'This email belongs to an admin account.');
-  }
-  if (!student) {
-    // A portal student without a Harper account: create one (they can log in to Harper later
-    // with this email to read their feedback).
-    student = ctx.db.insert('Users', {
-      id: ctx.svc.uuid(),
-      name,
-      email,
-      class: '',
-      role: 'student',
-      target_band: '',
-      exam_date: '',
-      timezone: adminTimezone(ctx),
-      consent_at: '',
-      created_at: ctx.nowIso,
-    });
-  }
+  const student = portalStudent(ctx, email, name);
   const essay = ctx.db.insert('Essays', {
     id: ctx.svc.uuid(),
     student_id: student.id,
@@ -123,4 +166,5 @@ function importEssay(ctx: Ctx, payload: unknown) {
 
 export const portalImportActions: Record<string, ActionDef> = {
   'portal.essays.import': { write: true, handler: (ctx, p) => importEssay(ctx, p) },
+  'portal.signin': { write: true, handler: (ctx, p) => signIn(ctx, p) },
 };

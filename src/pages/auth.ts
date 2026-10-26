@@ -216,12 +216,16 @@ export function signupPage(): Node {
 export function authCallbackPage(ctx: RouteContext): Node {
   const box = h('div', null, loading('Logging you in…'));
   const token = ctx.query.get('token') ?? '';
+  // A link from IELTS Harper Portal may name the page to open, e.g. /essays/abc-123.
+  const next = ctx.query.get('next') ?? '';
   // Remove the token from the address bar and history straight away.
   history.replaceState(null, '', '#/auth');
   api<{ sessionToken: string; user: SessionUser }>('auth.exchange', { token }).then(
     (res) => {
       setSession(res.sessionToken, res.user);
-      navigate(res.user.role === 'admin' ? '/admin' : '/dashboard', { replace: true });
+      const home = res.user.role === 'admin' ? '/admin' : '/dashboard';
+      const safeNext = res.user.role === 'student' && /^\/[A-Za-z0-9/_-]{0,100}$/.test(next);
+      navigate(safeNext ? next : home, { replace: true });
     },
     (err) => replace(box, errorBox(err), h('p', null, link('/login', 'Request a new login link'))),
   );
