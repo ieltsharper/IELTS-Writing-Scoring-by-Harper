@@ -203,8 +203,18 @@ export const accountActions: Record<string, ActionDef> = {
     handler: (ctx, p) => {
       const r = new Reader(p);
       const email = r.str('email', { max: LIMITS.email });
-      const password = r.str('password', { max: PASSWORD_MAX, trim: false });
+      const password = r.str('password', { max: PASSWORD_MAX, trim: false, optional: true });
       r.done();
+      const normalized = email.trim().toLowerCase();
+      // No password typed, or an account that has none yet (added by the teacher or by IELTS
+      // Harper Portal): email a one-time login link instead of showing an error.
+      const row = ctx.db.findOne('Users', (u) => u.email.toLowerCase() === normalized);
+      if (!password || (row && !row.password_hash)) {
+        requestLoginLink(ctx, normalized);
+        // With a password typed we only get here for an existing account (it has none yet), so
+        // the page may say the link was sent. With no password, do not reveal whether it exists.
+        return { linkSent: true, email: normalized, knownAccount: password ? true : undefined };
+      }
       const { sessionToken, user } = passwordLogin(ctx, email, password);
       return { sessionToken, user: publicUser(user) };
     },

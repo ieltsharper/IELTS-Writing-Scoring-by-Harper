@@ -29,6 +29,9 @@ interface SessionResponse {
   user: SessionUser;
 }
 
+/** auth.login: a session, or (no password typed / account without one) a login link was emailed. */
+type LoginResponse = SessionResponse | { linkSent: true; email: string; knownAccount?: boolean };
+
 function enterSite(res: SessionResponse) {
   setSession(res.sessionToken, res.user);
   navigate(res.user.role === 'admin' ? '/admin' : '/dashboard', { replace: true });
@@ -50,7 +53,12 @@ export function loginPage(ctx: RouteContext): Node {
     'form',
     { class: 'card narrow', novalidate: true },
     field({ label: 'Email address', control: email, name: 'email' }),
-    field({ label: 'Password', control: password, name: 'password' }),
+    field({
+      label: 'Password',
+      control: password,
+      name: 'password',
+      hint: 'No password yet? Leave it empty and press Log in: we will email you a login link.',
+    }),
     submit,
     status,
   );
@@ -58,17 +66,33 @@ export function loginPage(ctx: RouteContext): Node {
     e.preventDefault();
     const errors: Record<string, string> = {};
     if (!email.value.trim()) errors.email = 'Enter your email address';
-    if (!password.value) errors.password = 'Enter your password';
     showFieldErrors(form, errors);
     if (Object.keys(errors).length) return;
     void busy(submit, 'Logging in…', async () => {
       try {
-        enterSite(
-          await api<SessionResponse>('auth.login', {
-            email: email.value,
-            password: password.value,
-          }),
-        );
+        const res = await api<LoginResponse>('auth.login', {
+          email: email.value,
+          password: password.value,
+        });
+        if ('linkSent' in res) {
+          password.value = '';
+          replace(
+            status,
+            notice(
+              'success',
+              h(
+                'p',
+                null,
+                res.knownAccount
+                  ? `We sent a login link to ${res.email}. Open the email and click the link to log in.`
+                  : `If ${res.email} has an account, a login link is on its way. Open the email and click the link to log in.`,
+              ),
+              h('p', null, 'If it is not in your inbox, check the Spam folder.'),
+            ),
+          );
+          return;
+        }
+        enterSite(res);
       } catch (err) {
         if (err instanceof ApiClientError && err.fields) showFieldErrors(form, err.fields);
         replace(status, errorBox(err));

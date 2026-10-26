@@ -168,15 +168,7 @@ export function passwordLogin(
     throw new ApiError('limit', 'Too many login attempts. Please wait an hour and try again.');
   }
   const user = ctx.db.findOne('Users', (u) => u.email.toLowerCase() === normalized);
-  if (user && !user.password_hash) {
-    throw new ApiError(
-      'unauthenticated',
-      isUnclaimed(ctx, user)
-        ? 'This account has no password yet. Use Sign up with the same email to choose one.'
-        : 'This account has no password yet. Use “Email me a login link” below, or ask your teacher to set a password for you.',
-    );
-  }
-  if (!user || !verifyPassword(ctx, password, user.password_hash)) {
+  if (!user || !user.password_hash || !verifyPassword(ctx, password, user.password_hash)) {
     throw new ApiError('unauthenticated', BAD_LOGIN_MESSAGE);
   }
   return createSession(ctx, user);

@@ -61,9 +61,10 @@ describe('passwords', () => {
     // A student the teacher added, or someone whose login email never arrived.
     const before = app.db().findOne('Users', (u) => u.email === 'demo.binh@example.com')!;
     app.db().remove('Essays', (e) => e.student_id === before.id);
-    expect(() =>
+    // Logging in to it emails a login link instead of failing.
+    expect(
       app.call('auth.login', { email: 'demo.binh@example.com', password: 'whatever1' }),
-    ).toThrow(/Use Sign up/);
+    ).toEqual({ linkSent: true, email: 'demo.binh@example.com', knownAccount: true });
     const res = signup(app, 'demo.binh@example.com');
     expect(res.user.id).toBe(before.id);
     expect(res.user.name).toBe(before.name);
@@ -77,9 +78,13 @@ describe('passwords', () => {
     const app = createTestApp();
     app.login('demo.an@example.com');
     expect(() => signup(app, 'demo.an@example.com')).toThrow(/already has an account/);
-    expect(() =>
+    // A password-less account that was used: logging in emails a login link.
+    const before = app.svc.mail.outbox.length;
+    expect(
       app.call('auth.login', { email: 'demo.an@example.com', password: 'whatever1' }),
-    ).toThrow(/Email me a login link/);
+    ).toMatchObject({ linkSent: true, knownAccount: true });
+    const mail = app.svc.mail.outbox.slice(before).find((m) => m.to === 'demo.an@example.com');
+    expect(mail?.text).toMatch(/token=/);
   });
 
   it('sets and changes the password from Settings', () => {
@@ -122,5 +127,16 @@ describe('passwords', () => {
     expect(list.find((s) => s.id === an.id)).toMatchObject({ hasPassword: true });
     expect(JSON.stringify(list)).not.toContain('v1$');
     expect(JSON.stringify(app.call('me.get', {}, student))).not.toContain('v1$');
+  });
+
+  it('an empty password asks for a login link, without saying whether the email has an account', () => {
+    const app = createTestApp();
+    const before = app.svc.mail.outbox.length;
+    const known = app.call('auth.login', { email: 'demo.an@example.com', password: '' });
+    const unknown = app.call('auth.login', { email: 'nobody@example.com', password: '' });
+    expect(known).toEqual({ linkSent: true, email: 'demo.an@example.com' });
+    expect(unknown).toEqual({ linkSent: true, email: 'nobody@example.com' });
+    const sent = app.svc.mail.outbox.slice(before).map((m) => m.to);
+    expect(sent).toEqual(['demo.an@example.com']);
   });
 });
