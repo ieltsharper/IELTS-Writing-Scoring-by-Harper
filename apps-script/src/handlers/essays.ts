@@ -100,6 +100,9 @@ function rewriteParent(ctx: Ctx, user: AuthUser, parentId: string): EssayRow {
   return parent;
 }
 
+/** Practice time is capped at 6 hours (a tab left open for days must not count). */
+export const MAX_PRACTICE_SECONDS = 6 * 3600;
+
 function saveDraft(ctx: Ctx, payload: unknown, user: AuthUser) {
   const r = new Reader(payload);
   const id = r.id('id', true);
@@ -132,6 +135,12 @@ function saveDraft(ctx: Ctx, payload: unknown, user: AuthUser) {
     : readCategory(ctx, r, taskType, { activeTopicsOnly: true });
   let prompt = r.str('prompt', { max: LIMITS.prompt, optional: true });
   const testDate = r.date('testDate', true);
+  // Practice: time spent writing, counted by the student's browser (a guide, not proof).
+  const timeSpent = r.int('timeSpentSeconds', {
+    min: 0,
+    max: MAX_PRACTICE_SECONDS,
+    optional: true,
+  });
   const removeImage = r.bool('removeImage');
   if (taskType === 'task2' && image) r.addError('image', 'Task 2 essays do not have an image');
   r.done();
@@ -169,6 +178,10 @@ function saveDraft(ctx: Ctx, payload: unknown, user: AuthUser) {
     test_date: testDate,
     saved_at: ctx.nowIso,
     ...(pasteAttempts !== null ? { paste_attempts: pasteAttempts } : {}),
+    // Never goes down (an older tab saving later must not shorten it).
+    ...(timeSpent !== null
+      ? { time_used_seconds: Math.max(timeSpent, num(existing?.time_used_seconds ?? '') ?? 0) }
+      : {}),
   };
 
   if (existing) {

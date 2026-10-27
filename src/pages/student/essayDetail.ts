@@ -105,7 +105,7 @@ export function essayDetailPage(ctx: RouteContext): Node {
         { class: 'hint' },
         `Submitted ${formatDateTime(essay.submittedAt)} · ${essay.wordCount} words`,
         essay.timeUsedSeconds !== null
-          ? ` · Time used ${Math.round(essay.timeUsedSeconds / 60)} min`
+          ? ` · ${essay.mode === 'practice' ? 'Time spent' : 'Time used'} ${Math.round(essay.timeUsedSeconds / 60)} min`
           : '',
       );
 

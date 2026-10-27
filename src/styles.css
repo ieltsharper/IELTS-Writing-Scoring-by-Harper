@@ -43,6 +43,11 @@
   line-height: 1.55;
 }
 
+/* An element marked hidden stays hidden, even when a class gives it a display (e.g. .btn). */
+[hidden] {
+  display: none !important;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -1510,9 +1515,6 @@ tbody tr:hover td {
   border-radius: var(--radius);
   background: var(--surface-2);
 }
-.prompt-bank[hidden] {
-  display: none;
-}
 .prompt-bank > div {
   display: flex;
   flex-direction: column;
@@ -1568,4 +1570,25 @@ tbody tr:hover td {
 }
 .prompt-bank-meta .btn {
   margin-left: auto;
+}
+
+/* ---- Practice mode clock ---- */
+.practice-clock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 4px 0 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface-2);
+}
+.practice-clock-time {
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary-dark);
+}
+.practice-clock .hint {
+  margin: 0;
 }

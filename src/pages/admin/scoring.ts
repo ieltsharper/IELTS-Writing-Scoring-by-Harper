@@ -233,7 +233,9 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
       { class: 'hint' },
       `Submitted ${formatDateTime(essay.submittedAt)}`,
       essay.timeUsedSeconds !== null
-        ? ` · Time used ${Math.round(essay.timeUsedSeconds / 60)} of ${essay.timeLimitMinutes} min`
+        ? essay.timeLimitMinutes
+          ? ` · Time used ${Math.round(essay.timeUsedSeconds / 60)} of ${essay.timeLimitMinutes} min`
+          : ` · Time spent ${Math.round(essay.timeUsedSeconds / 60)} min (practice)`
         : '',
       essay.overTime ? [' ', badge('Over time', 'warning')] : null,
       essay.autoSubmitted ? [' ', badge('Auto-submitted')] : null,

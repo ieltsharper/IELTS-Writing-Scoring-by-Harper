@@ -258,3 +258,45 @@ describe('student essay flow', () => {
     ).toBe(true);
   });
 });
+
+describe('practice mode clock', () => {
+  it('keeps the time spent writing with the draft, never lower, and after submitting', () => {
+    const { app, topic, student } = setup();
+    const base = {
+      taskType: 'task2',
+      topicId: topic('Education'),
+      essayType: 'discussion',
+      prompt: 'Discuss both views and give your own opinion.',
+      body: essayText(260),
+    };
+    const d = app.call('essays.saveDraft', { ...base, timeSpentSeconds: 600 }, student);
+    expect(d.timeUsedSeconds).toBe(600);
+    // An older tab saving later does not shorten it.
+    const again = app.call(
+      'essays.saveDraft',
+      { ...base, id: d.id, timeSpentSeconds: 300 },
+      student,
+    );
+    expect(again.timeUsedSeconds).toBe(600);
+    const res = app.call('essays.submit', { ...base, id: d.id, timeSpentSeconds: 1500 }, student);
+    expect(res.essay).toMatchObject({ timeUsedSeconds: 1500, overTime: false });
+  });
+
+  it('refuses an impossible time (over 6 hours)', () => {
+    const { app, topic, student } = setup();
+    expect(
+      app.raw(
+        'essays.saveDraft',
+        {
+          taskType: 'task2',
+          topicId: topic('Education'),
+          essayType: 'discussion',
+          prompt: 'Discuss both views.',
+          body: 'Hello',
+          timeSpentSeconds: 7 * 3600,
+        },
+        student,
+      ),
+    ).toMatchObject({ ok: false, error: { fields: { timeSpentSeconds: expect.any(String) } } });
+  });
+});

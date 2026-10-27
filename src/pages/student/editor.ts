@@ -164,6 +164,70 @@ function wordCountBox(taskType: () => TaskType, body: HTMLTextAreaElement): HTML
   return out;
 }
 
+/** Practice: no typing for this long pauses the clock (walking away does not count). */
+const PRACTICE_IDLE_MS = 3 * 60_000;
+const PRACTICE_MAX_SECONDS = 6 * 3600;
+
+/**
+ * Practice mode's clock: how long the student has spent writing. Starts at the first keystroke
+ * in the essay and counts while the page is open, not paused and typed in within 3 minutes.
+ */
+function practiceClock(
+  taskType: () => TaskType,
+  body: HTMLTextAreaElement,
+  startSeconds: number,
+): { el: HTMLElement; seconds: () => number } {
+  let seconds = Math.min(PRACTICE_MAX_SECONDS, Math.max(0, startSeconds));
+  let started = seconds > 0;
+  let paused = false;
+  let lastInput = 0;
+  const time = h('strong', { class: 'practice-clock-time' });
+  const state = h('span', { class: 'hint' });
+  const pauseBtn = h('button', { type: 'button', class: 'btn btn-small', hidden: true }, 'Pause');
+  const idle = () => Date.now() - lastInput > PRACTICE_IDLE_MS;
+  const render = () => {
+    time.textContent = clock(seconds * 1000);
+    pauseBtn.hidden = !started;
+    pauseBtn.textContent = paused ? 'Resume' : 'Pause';
+    state.textContent = !started
+      ? `Starts when you begin writing. IELTS allows about ${TIME_LIMITS[taskType()]} minutes for ${TASK_TYPE_LABELS[taskType()]}.`
+      : paused
+        ? 'Paused.'
+        : idle()
+          ? 'Paused while you are not typing.'
+          : `IELTS allows about ${TIME_LIMITS[taskType()]} minutes.`;
+  };
+  body.addEventListener('input', () => {
+    lastInput = Date.now();
+    started = true;
+    paused = false;
+    render();
+  });
+  pauseBtn.addEventListener('click', () => {
+    paused = !paused;
+    // Resuming counts at once, even before the next keystroke.
+    if (!paused) lastInput = Date.now();
+    render();
+  });
+  const timer = window.setInterval(() => {
+    if (started && !paused && document.visibilityState === 'visible' && !idle()) {
+      seconds = Math.min(PRACTICE_MAX_SECONDS, seconds + 1);
+    }
+    render();
+  }, 1000);
+  onLeave(() => window.clearInterval(timer));
+  render();
+  const el = h(
+    'div',
+    { class: 'practice-clock', role: 'group', 'aria-label': 'Time spent writing' },
+    h('span', null, 'Time spent '),
+    time,
+    pauseBtn,
+    state,
+  );
+  return { el, seconds: () => seconds };
+}
+
 /** Harper's topic and essay type for a question picked from the prompt bank. */
 function categoryForBankPrompt(picked: BankPrompt, config: AppConfig) {
   return {
@@ -300,7 +364,9 @@ function practiceEditor(
         )
       : null;
 
+  const timer = practiceClock(() => taskSel.value as TaskType, body, essay?.timeUsedSeconds ?? 0);
   const payload = () => ({
+    timeSpentSeconds: timer.seconds(),
     id: currentId ?? undefined,
     parentEssayId: parent?.id ?? undefined,
     taskType: taskSel.value,
@@ -400,6 +466,7 @@ function practiceEditor(
       name: 'testDate',
       hint: 'If you wrote this in a real or mock test.',
     }),
+    timer.el,
     field({ label: 'Your essay', control: body, name: 'body' }),
     startFromOriginal,
     wordCountBox(() => taskSel.value as TaskType, body),

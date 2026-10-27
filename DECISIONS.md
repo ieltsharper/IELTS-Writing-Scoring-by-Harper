@@ -186,3 +186,13 @@ No service in the spec was replaced; everything runs on GitHub Pages, Apps Scrip
 - `src/data/promptBank.ts` and `shared/promptMatch.ts` are **copies of IELTS Harper Portal's**
   (`web/src/data/promptBank.ts`, `shared/promptMatch.ts`): change both together. The bank is
   loaded only when the student opens it.
+
+## Practice mode clock (2026-10-28)
+
+- The practice editor shows **Time spent**: it starts at the first keystroke in the essay and
+  counts while the page is visible, not paused, and the student typed in the last 3 minutes
+  (thinking time counts, walking away does not). Pause/Resume button.
+- Saved with the draft and on submit in `time_used_seconds` (never lowered, at most 6 hours),
+  so the student's essay page and the scoring page show it ("Time spent X min (practice)").
+  It is counted by the student's browser: a guide, not proof (test mode is timed by the server).
+- `[hidden]` now always hides (a class such as `.btn` no longer overrides it).
