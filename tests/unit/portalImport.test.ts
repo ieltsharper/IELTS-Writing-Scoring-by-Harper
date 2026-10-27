@@ -191,3 +191,18 @@ describe('one-time login from IELTS Harper Portal', () => {
     );
   });
 });
+
+describe('practice time from the portal', () => {
+  it('keeps the time spent writing a practice essay', () => {
+    const { app, base } = setup();
+    const res = app.call(
+      'portal.essays.import',
+      base({ submissionId: 'sub-time-0001', timeSpentSeconds: 1500 }),
+    );
+    expect(app.db().byId('Essays', res.essayId)!).toMatchObject({
+      mode: 'practice',
+      time_used_seconds: '1500',
+      over_time: 'false',
+    });
+  });
+});

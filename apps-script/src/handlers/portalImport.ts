@@ -16,7 +16,7 @@ import { adminTimezone, ApiError, appUrl, type Ctx } from '../context';
 import { saveUploadedImage } from '../drive';
 import type { ActionDef } from '../router';
 import { Reader } from '../validate';
-import { finalizeSubmission } from './essays';
+import { finalizeSubmission, MAX_PRACTICE_SECONDS } from './essays';
 
 /** Compares two strings in time that does not depend on where they first differ. */
 function sameSecret(a: string, b: string): boolean {
@@ -105,6 +105,12 @@ function importEssay(ctx: Ctx, payload: unknown) {
   const submittedAt = r.isoTime('submittedAt', true);
   const autoSubmitted = r.has('autoSubmitted') ? r.bool('autoSubmitted') : false;
   const pasteAttempts = r.int('pasteAttempts', { min: 0, max: 10000, optional: true }) ?? 0;
+  // Practice: seconds spent writing, counted by the portal page (shown as Time spent).
+  const timeSpent = r.int('timeSpentSeconds', {
+    min: 0,
+    max: MAX_PRACTICE_SECONDS,
+    optional: true,
+  });
   const imageR = r.object('image', true);
   let image: { base64: string; mimeType: string; name: string } | null = null;
   if (imageR) {
@@ -138,7 +144,7 @@ function importEssay(ctx: Ctx, payload: unknown) {
     mode,
     assignment_id: '',
     started_at: mode === 'test' ? new Date(startedAt).toISOString() : '',
-    time_used_seconds: '',
+    time_used_seconds: mode === 'practice' && timeSpent ? timeSpent : '',
     auto_submitted: false,
     over_time: false,
     paste_attempts: pasteAttempts,
