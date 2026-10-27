@@ -22,7 +22,10 @@ import {
   toast,
 } from '../../ui/components';
 import { clock, formatDateTime, modeLabel, taskLabel } from '../../ui/format';
+import { ESSAY_TYPE_FOR, harperTopicFor } from '../../../shared/promptMatch';
+import type { BankPrompt } from '../../data/promptBank';
 import { categoryFields } from '../../ui/categoryFields';
+import { promptBankPicker } from '../../ui/promptBank';
 import { type PickedImage, readImageFile, remoteImage } from '../../ui/image';
 
 const LOCAL_SAVE_MS = 15_000;
@@ -161,6 +164,14 @@ function wordCountBox(taskType: () => TaskType, body: HTMLTextAreaElement): HTML
   return out;
 }
 
+/** Harper's topic and essay type for a question picked from the prompt bank. */
+function categoryForBankPrompt(picked: BankPrompt, config: AppConfig) {
+  return {
+    essayType: ESSAY_TYPE_FOR[picked.type] ?? '',
+    topicId: harperTopicFor(picked.topics, config.topics) ?? '',
+  };
+}
+
 /** Practice mode editor, also used for rewrites (prompt, topic, task type and image come from the original). */
 function practiceEditor(
   config: AppConfig,
@@ -251,8 +262,17 @@ function practiceEditor(
     hint: 'Required for Task 1 Academic. Attach the chart from the question.',
   });
   imageField.append(imagePreview);
+  // Task 2: pick a question from the prompt bank (not for rewrites: the question is fixed).
+  const bank = promptBankPicker((picked) => {
+    prompt.value = picked.prompt;
+    category.setValues(categoryForBankPrompt(picked, config));
+    dirty = true;
+    toast('Question added. Check the topic and essay type.');
+    prompt.focus();
+  });
   const syncTaskType = () => {
     const task1 = taskSel.value === 'task1_academic';
+    bank.hidden = taskSel.value !== 'task2' || isRewrite;
     imageField.hidden = !task1 || isRewrite;
     imagePreview.hidden = !task1;
     category.setTaskType(taskSel.value);
@@ -366,6 +386,7 @@ function practiceEditor(
       field({ label: 'Task type', control: taskSel, name: 'taskType' }),
       ...category.fields,
     ),
+    bank,
     field({
       label: 'Task prompt',
       control: prompt,
@@ -446,7 +467,14 @@ function testSetup(config: AppConfig): HTMLElement {
     name: 'image',
   });
   const limitNote = h('p', { class: 'hint' });
+  const bank = promptBankPicker((picked) => {
+    prompt.value = picked.prompt;
+    category.setValues(categoryForBankPrompt(picked, config));
+    toast('Question added. Check the topic and essay type.');
+    prompt.focus();
+  });
   const sync = () => {
+    bank.hidden = taskSel.value !== 'task2';
     imageField.hidden = taskSel.value !== 'task1_academic';
     category.setTaskType(taskSel.value);
     limitNote.textContent = `Time limit: ${TIME_LIMITS[taskSel.value as TaskType]} minutes. The timer starts when you press "Start test" and keeps running if you leave the page.`;
@@ -473,6 +501,7 @@ function testSetup(config: AppConfig): HTMLElement {
       field({ label: 'Task type', control: taskSel, name: 'taskType' }),
       ...category.fields,
     ),
+    bank,
     field({
       label: 'Task prompt',
       control: prompt,

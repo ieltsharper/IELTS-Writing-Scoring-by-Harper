@@ -176,3 +176,13 @@ No service in the spec was replaced; everything runs on GitHub Pages, Apps Scrip
 - Charts have a text summary (`role="img"` + `aria-label`) and a "Show data as a table" fallback.
 - The error tagger works without a mouse: type the exact text instead of selecting it.
 - The test timer announces 10, 5 and 1 minute left without reading every second.
+
+## Task 2 prompt bank (2026-10-28)
+
+- The student editor (practice and test set-up) has **Choose from the prompt bank** for Task 2:
+  331 prompts from the teacher's spreadsheet, filtered by topic and question type, searchable,
+  with a random pick. Choosing one fills in the prompt, the essay type and the closest topic
+  (`shared/promptMatch.ts`); the student can change them. Hidden for Task 1 and for rewrites.
+- `src/data/promptBank.ts` and `shared/promptMatch.ts` are **copies of IELTS Harper Portal's**
+  (`web/src/data/promptBank.ts`, `shared/promptMatch.ts`): change both together. The bank is
+  loaded only when the student opens it.
