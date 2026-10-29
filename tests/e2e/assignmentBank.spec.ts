@@ -31,6 +31,6 @@ test('admin fills an assignment and an added essay from the prompt bank', async 
   await page.goto('#/admin/essays/new');
   await page.getByRole('button', { name: 'Choose from the prompt bank' }).click();
   await page.getByRole('button', { name: 'Use this question' }).first().click();
-  await expect(page.getByText('Question added.')).toBeVisible();
+  await expect(page.getByText('Question added.').last()).toBeVisible();
   expect((await page.getByLabel('Task prompt').inputValue()).length).toBeGreaterThan(30);
 });
