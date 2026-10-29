@@ -22,10 +22,8 @@ import {
   toast,
 } from '../../ui/components';
 import { clock, formatDateTime, modeLabel, taskLabel } from '../../ui/format';
-import { ESSAY_TYPE_FOR, harperTopicFor } from '../../../shared/promptMatch';
-import type { BankPrompt } from '../../data/promptBank';
 import { categoryFields } from '../../ui/categoryFields';
-import { promptBankPicker } from '../../ui/promptBank';
+import { categoryForBankPrompt, promptBankPicker } from '../../ui/promptBank';
 import { type PickedImage, readImageFile, remoteImage } from '../../ui/image';
 
 const LOCAL_SAVE_MS = 15_000;
@@ -228,14 +226,6 @@ function practiceClock(
   return { el, seconds: () => seconds };
 }
 
-/** Harper's topic and essay type for a question picked from the prompt bank. */
-function categoryForBankPrompt(picked: BankPrompt, config: AppConfig) {
-  return {
-    essayType: ESSAY_TYPE_FOR[picked.type] ?? '',
-    topicId: harperTopicFor(picked.topics, config.topics) ?? '',
-  };
-}
-
 /** Practice mode editor, also used for rewrites (prompt, topic, task type and image come from the original). */
 function practiceEditor(
   config: AppConfig,
@@ -329,7 +319,7 @@ function practiceEditor(
   // Task 2: pick a question from the prompt bank (not for rewrites: the question is fixed).
   const bank = promptBankPicker((picked) => {
     prompt.value = picked.prompt;
-    category.setValues(categoryForBankPrompt(picked, config));
+    category.setValues(categoryForBankPrompt(picked, config.topics));
     dirty = true;
     toast('Question added. Check the topic and essay type.');
     prompt.focus();
@@ -536,7 +526,7 @@ function testSetup(config: AppConfig): HTMLElement {
   const limitNote = h('p', { class: 'hint' });
   const bank = promptBankPicker((picked) => {
     prompt.value = picked.prompt;
-    category.setValues(categoryForBankPrompt(picked, config));
+    category.setValues(categoryForBankPrompt(picked, config.topics));
     toast('Question added. Check the topic and essay type.');
     prompt.focus();
   });

@@ -21,6 +21,7 @@ import {
 } from '../../ui/components';
 import { ASSIGNMENT_STATUS_LABELS, formatBand, formatDateTime, taskLabel } from '../../ui/format';
 import { categoryFields } from '../../ui/categoryFields';
+import { categoryForBankPrompt, promptBankPicker } from '../../ui/promptBank';
 import { type PickedImage, readImageFile, remoteImage } from '../../ui/image';
 import type { ScoreView } from '../../types';
 
@@ -142,7 +143,16 @@ export function newAssignmentPage(): Node {
           { type: 'submit', class: 'btn btn-primary' },
           'Create assignment',
         );
+        // Task 2: pick the question from the prompt bank (fills prompt, topic and essay type).
+        const bank = promptBankPicker((picked) => {
+          prompt.value = picked.prompt;
+          category.setValues(categoryForBankPrompt(picked, config.topics));
+          if (!title.value.trim()) title.value = `Task 2: ${picked.prompt.slice(0, 60).trim()}…`;
+          toast('Question added. Check the title, topic and essay type.');
+          prompt.focus();
+        });
         const sync = () => {
+          bank.hidden = taskSel.value !== 'task2';
           imageField.hidden = taskSel.value !== 'task1_academic';
           category.setTaskType(taskSel.value);
           minutes.value = String(TIME_LIMITS[taskSel.value as TaskType]);
@@ -169,6 +179,7 @@ export function newAssignmentPage(): Node {
             field({ label: 'Task type', control: taskSel, name: 'taskType' }),
             ...category.fields,
           ),
+          bank,
           field({
             label: 'Prompt (hidden from students until they press Start test)',
             control: prompt,

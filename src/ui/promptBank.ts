@@ -1,6 +1,7 @@
 // "Choose from the prompt bank" (Task 2): 331 IELTS Writing Task 2 prompts, narrowed by topic,
 // question type and a search box. Picking one fills in the prompt, essay type and topic.
 // Same bank and behaviour as IELTS Harper Portal's "Write my own essay".
+import { ESSAY_TYPE_FOR, harperTopicFor } from '../../shared/promptMatch';
 import type { BankPrompt, PromptType } from '../data/promptBank';
 import { h, replace } from '../dom';
 import { loading } from './components';
@@ -15,6 +16,17 @@ export const BANK_TYPE_LABELS: Record<PromptType, string> = {
   positive_negative: 'Positive or negative development',
   other: 'Other (two-part questions)',
 };
+
+/** Harper's topic and essay type for a question picked from the prompt bank. */
+export function categoryForBankPrompt(
+  picked: BankPrompt,
+  topics: Array<{ id: string; label: string }>,
+) {
+  return {
+    essayType: ESSAY_TYPE_FOR[picked.type] ?? '',
+    topicId: harperTopicFor(picked.topics, topics) ?? '',
+  };
+}
 
 let idSeq = 0;
 
