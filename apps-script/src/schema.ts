@@ -66,6 +66,7 @@ export const SCHEMA = {
     'created_at',
     'diagram_type',
     'essay_type',
+    'guidance',
   ],
   Drafts: ['id', 'essay_id', 'kind', 'raw_text', 'parsed_json', 'created_at'],
   FeedbackSources: ['id', 'name', 'active'],

@@ -145,6 +145,7 @@ function create(ctx: Ctx, payload: unknown) {
   const taskType = r.oneOf('taskType', TASK_TYPES) as TaskType;
   const category = readCategory(ctx, r, taskType, { activeTopicsOnly: false });
   const prompt = r.str('prompt', { max: LIMITS.prompt, min: 10 });
+  const guidance = r.str('guidance', { max: LIMITS.prompt, optional: true });
   const classes = r.ids('classIds');
   const students = r.ids('studentIds');
   const opensAt = r.isoTime('opensAt');
@@ -184,6 +185,7 @@ function create(ctx: Ctx, payload: unknown) {
     task_type: taskType,
     ...categoryColumns(category),
     prompt,
+    guidance,
     image_file_id: imageId,
     class_ids: JSON.stringify(classes),
     student_ids: JSON.stringify(students),
@@ -273,6 +275,7 @@ function adminGet(ctx: Ctx, payload: unknown) {
     diagramType: a.diagram_type,
     essayType: a.essay_type,
     prompt: a.prompt,
+    guidance: a.guidance,
     hasImage: Boolean(a.image_file_id),
     classIds: classIds(a),
     classLabels: classIds(a).map((c) => classLabels.get(c) ?? c),

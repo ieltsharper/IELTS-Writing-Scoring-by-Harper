@@ -94,6 +94,7 @@ export function newAssignmentPage(): Node {
         );
         const category = categoryFields(config.topics);
         const prompt = h('textarea', { name: 'prompt', rows: '5', maxlength: '4000' });
+        const guidance = h('textarea', { name: 'guidance', rows: '5', maxlength: '4000' });
         const file = h('input', { type: 'file', name: 'image', accept: 'image/png,image/jpeg' });
         const imageField = field({
           label: 'Chart image (PNG or JPG, max 5 MB)',
@@ -186,6 +187,12 @@ export function newAssignmentPage(): Node {
             name: 'prompt',
           }),
           imageField,
+          field({
+            label: 'Guidance for students (optional)',
+            control: guidance,
+            name: 'guidance',
+            hint: 'Shown under the question once they start, for example how to plan, ideas to consider or useful language.',
+          }),
           h(
             'fieldset',
             { class: 'field', dataset: { field: 'classIds' } },
@@ -230,6 +237,7 @@ export function newAssignmentPage(): Node {
                   taskType: taskSel.value,
                   ...category.values(),
                   prompt: prompt.value,
+                  guidance: guidance.value,
                   image: taskSel.value === 'task1_academic' ? (image ?? undefined) : undefined,
                   classIds: classBoxes.filter((c) => c.box.checked).map((c) => c.box.value),
                   studentIds: [...studentSel.selectedOptions].map((o) => o.value),
@@ -261,6 +269,7 @@ interface AssignmentDetail {
   title: string;
   taskType: string;
   prompt: string;
+  guidance: string;
   hasImage: boolean;
   classLabels: string[];
   opensAt: string;
@@ -306,6 +315,14 @@ export function assignmentDetailPage(ctx: RouteContext): Node {
           a.classLabels.length ? ` · ${a.classLabels.join(', ')}` : '',
         ),
         h('p', { class: 'prompt-text' }, a.prompt),
+        a.guidance
+          ? h(
+              'div',
+              { class: 'guidance-box' },
+              h('h3', null, 'Guidance for students'),
+              h('p', { class: 'guidance-text' }, a.guidance),
+            )
+          : null,
         a.hasImage
           ? remoteImage('admin.assignments.image', { id: a.id }, 'Assignment chart')
           : null,

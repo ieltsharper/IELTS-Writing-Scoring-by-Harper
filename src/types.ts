@@ -72,6 +72,7 @@ export interface EssaySummary {
 
 export interface EssayDetail extends EssaySummary {
   prompt: string;
+  guidance?: string;
   body: string;
   hasImage: boolean;
   timeLimitMinutes: number | null;

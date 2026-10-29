@@ -20,6 +20,7 @@ import {
   selectEl,
   showFieldErrors,
   toast,
+  guidanceBox,
 } from '../../ui/components';
 import { clock, formatDateTime, modeLabel, taskLabel } from '../../ui/format';
 import { categoryFields } from '../../ui/categoryFields';
@@ -815,6 +816,7 @@ export function timedEditor(essay: EssayDetail): HTMLElement {
       essay.hasImage
         ? remoteImage('essays.image', { essayId: essay.id }, 'Chart or diagram for this task')
         : null,
+      guidanceBox(essay.guidance),
     ),
     h(
       'div',

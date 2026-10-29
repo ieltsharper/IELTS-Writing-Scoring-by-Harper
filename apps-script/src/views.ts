@@ -167,6 +167,10 @@ export function essayDetail(ctx: Ctx, essay: EssayRow) {
   return {
     ...essaySummary(ctx, essay),
     prompt: essay.prompt,
+    /** The teacher's notes for an assigned test, shown next to the question. */
+    guidance: essay.assignment_id
+      ? (ctx.db.byId('Assignments', essay.assignment_id)?.guidance ?? '')
+      : '',
     body: essay.body,
     hasImage: Boolean(essay.image_file_id),
     timeLimitMinutes: timeLimitMinutes(ctx, essay),

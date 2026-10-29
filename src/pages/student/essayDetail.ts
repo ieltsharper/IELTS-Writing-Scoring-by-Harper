@@ -9,7 +9,7 @@ import { api } from '../../api';
 import { type Child, h, replace } from '../../dom';
 import type { RouteContext } from '../../router';
 import type { EssayDetail, ErrorView, ScoreView } from '../../types';
-import { async, badge, link, notice, page, table } from '../../ui/components';
+import { async, badge, guidanceBox, link, notice, page, table } from '../../ui/components';
 import { essayText, highlightLegend } from '../../ui/essayText';
 import {
   countdown,
@@ -243,6 +243,7 @@ export function essayDetailPage(ctx: RouteContext): Node {
         essay.hasImage
           ? remoteImage('essays.image', { essayId: essay.id }, 'Chart or diagram for this task')
           : null,
+        guidanceBox(essay.guidance),
       );
 
       if (essay.score) {

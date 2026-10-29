@@ -1592,3 +1592,22 @@ tbody tr:hover td {
 .practice-clock .hint {
   margin: 0;
 }
+
+/* The teacher's guidance next to an assigned question */
+.guidance-box {
+  margin: 12px 0;
+  padding: 12px 16px;
+  border: 1px solid var(--primary-border);
+  border-radius: var(--radius-small);
+  background: var(--primary-soft);
+}
+
+.guidance-box h3 {
+  margin: 0 0 6px;
+  color: var(--primary-dark);
+}
+
+.guidance-text {
+  margin: 0;
+  white-space: pre-wrap;
+}

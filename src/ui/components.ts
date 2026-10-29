@@ -122,6 +122,17 @@ export function selectEl(
   );
 }
 
+/** The teacher's guidance for an assigned task; nothing when there is none. */
+export function guidanceBox(text: string | undefined): HTMLElement | null {
+  if (!text?.trim()) return null;
+  return h(
+    'div',
+    { class: 'guidance-box' },
+    h('h3', null, 'Guidance from your teacher'),
+    h('p', { class: 'guidance-text' }, text),
+  );
+}
+
 export function badge(text: string, kind = ''): HTMLElement {
   return h('span', { class: `badge ${kind ? `badge-${kind}` : ''}` }, text);
 }
