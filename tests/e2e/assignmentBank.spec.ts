@@ -1,9 +1,9 @@
-// The admin picks an assignment question from the Task 2 prompt bank.
+// The admin picks a question from the Task 2 prompt bank (assignments and Add an essay).
 import { expect, test } from '@playwright/test';
 
 const API = 'http://localhost:8788';
 
-test('admin fills an assignment from the prompt bank', async ({ page }) => {
+test('admin fills an assignment and an added essay from the prompt bank', async ({ page }) => {
   await page.request.get(`${API}/__test/reset`);
   await page.request.post(`${API}/`, {
     headers: { 'Content-Type': 'text/plain' },
@@ -26,4 +26,11 @@ test('admin fills an assignment from the prompt bank', async ({ page }) => {
   // Task 1 has no bank.
   await page.getByLabel('Task type').selectOption('task1_academic');
   await expect(page.getByRole('button', { name: 'Choose from the prompt bank' })).toBeHidden();
+
+  // Add an essay has the same bank.
+  await page.goto('#/admin/essays/new');
+  await page.getByRole('button', { name: 'Choose from the prompt bank' }).click();
+  await page.getByRole('button', { name: 'Use this question' }).first().click();
+  await expect(page.getByText('Question added.')).toBeVisible();
+  expect((await page.getByLabel('Task prompt').inputValue()).length).toBeGreaterThan(30);
 });

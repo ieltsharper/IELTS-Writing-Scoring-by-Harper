@@ -19,6 +19,7 @@ import {
   toast,
 } from '../../ui/components';
 import { categoryFields } from '../../ui/categoryFields';
+import { categoryForBankPrompt, promptBankPicker } from '../../ui/promptBank';
 import { readEssayFile } from '../../ui/docx';
 import { type PickedImage, readImageFile } from '../../ui/image';
 
@@ -139,7 +140,16 @@ export function addEssayPage(): Node {
           const min = MIN_WORDS[taskSel.value as TaskType];
           words.textContent = `${n} word${n === 1 ? '' : 's'}${n > 0 && n < min ? ` · below the ${min}-word minimum for ${TASK_TYPE_LABELS[taskSel.value as TaskType]}` : ''}`;
         };
+        // Task 2: pick the question from the prompt bank (fills prompt, topic and essay type).
+        const bank = promptBankPicker((picked) => {
+          prompt.value = picked.prompt;
+          category.setValues(categoryForBankPrompt(picked, config.topics));
+          dirty = true;
+          toast('Question added. Check the topic and essay type.');
+          prompt.focus();
+        });
         const syncTask = () => {
+          bank.hidden = taskSel.value !== 'task2';
           imageField.hidden = taskSel.value !== 'task1_academic';
           category.setTaskType(taskSel.value);
           updateWords();
@@ -218,6 +228,7 @@ export function addEssayPage(): Node {
             field({ label: 'Task type', control: taskSel, name: 'taskType' }),
             ...category.fields,
           ),
+          bank,
           field({ label: 'Task prompt', control: prompt, name: 'prompt' }),
           imageField,
           field({ label: 'Date written (optional)', control: testDate, name: 'testDate' }),
