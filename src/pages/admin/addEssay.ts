@@ -21,7 +21,7 @@ import {
 import { categoryFields } from '../../ui/categoryFields';
 import { categoryForBankPrompt, promptBankPicker } from '../../ui/promptBank';
 import { readEssayFile } from '../../ui/docx';
-import { type PickedImage, readImageFile } from '../../ui/image';
+import { type PickedImage, readImageFile, IMAGE_ACCEPT } from '../../ui/image';
 
 interface StudentOption {
   id: string;
@@ -117,10 +117,10 @@ export function addEssayPage(): Node {
         const imageInput = h('input', {
           type: 'file',
           name: 'image',
-          accept: 'image/png,image/jpeg',
+          accept: IMAGE_ACCEPT,
         });
         const imageField = field({
-          label: 'Chart or diagram image (PNG or JPG, max 5 MB)',
+          label: 'Chart or diagram image (PNG, JPG or AVIF, max 5 MB)',
           control: imageInput,
           name: 'image',
           hint: 'Required for Task 1 Academic.',

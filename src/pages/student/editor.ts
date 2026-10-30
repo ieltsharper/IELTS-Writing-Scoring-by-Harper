@@ -25,7 +25,7 @@ import {
 import { clock, formatDateTime, modeLabel, taskLabel } from '../../ui/format';
 import { categoryFields } from '../../ui/categoryFields';
 import { categoryForBankPrompt, promptBankPicker } from '../../ui/promptBank';
-import { type PickedImage, readImageFile, remoteImage } from '../../ui/image';
+import { type PickedImage, readImageFile, remoteImage, IMAGE_ACCEPT } from '../../ui/image';
 
 const LOCAL_SAVE_MS = 15_000;
 const SERVER_SAVE_MS = 120_000;
@@ -261,7 +261,7 @@ function practiceEditor(
     autocapitalize: 'sentences',
   });
   body.value = essay?.body ?? '';
-  const fileInput = h('input', { type: 'file', name: 'image', accept: 'image/png,image/jpeg' });
+  const fileInput = h('input', { type: 'file', name: 'image', accept: IMAGE_ACCEPT });
   const imagePreview = h('div', { class: 'image-preview' });
   const status = h('div', { 'aria-live': 'polite' });
 
@@ -311,7 +311,7 @@ function practiceEditor(
   });
 
   const imageField = field({
-    label: 'Chart or diagram image (PNG or JPG, max 5 MB)',
+    label: 'Chart or diagram image (PNG, JPG or AVIF, max 5 MB)',
     control: fileInput,
     name: 'image',
     hint: 'Required for Task 1 Academic. Attach the chart from the question.',
@@ -516,11 +516,11 @@ function testSetup(config: AppConfig): HTMLElement {
   );
   const category = categoryFields(config.topics);
   const prompt = h('textarea', { name: 'prompt', rows: '4', maxlength: '4000' });
-  const fileInput = h('input', { type: 'file', name: 'image', accept: 'image/png,image/jpeg' });
+  const fileInput = h('input', { type: 'file', name: 'image', accept: IMAGE_ACCEPT });
   const status = h('div', { 'aria-live': 'polite' });
   const startBtn = h('button', { type: 'submit', class: 'btn btn-primary' }, 'Start test');
   const imageField = field({
-    label: 'Chart or diagram image (PNG or JPG, max 5 MB)',
+    label: 'Chart or diagram image (PNG, JPG or AVIF, max 5 MB)',
     control: fileInput,
     name: 'image',
   });

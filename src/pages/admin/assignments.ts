@@ -22,7 +22,7 @@ import {
 import { ASSIGNMENT_STATUS_LABELS, formatBand, formatDateTime, taskLabel } from '../../ui/format';
 import { categoryFields } from '../../ui/categoryFields';
 import { categoryForBankPrompt, promptBankPicker } from '../../ui/promptBank';
-import { type PickedImage, readImageFile, remoteImage } from '../../ui/image';
+import { type PickedImage, readImageFile, remoteImage, IMAGE_ACCEPT } from '../../ui/image';
 import type { ScoreView } from '../../types';
 
 interface AssignmentListItem {
@@ -95,9 +95,9 @@ export function newAssignmentPage(): Node {
         const category = categoryFields(config.topics);
         const prompt = h('textarea', { name: 'prompt', rows: '5', maxlength: '4000' });
         const guidance = h('textarea', { name: 'guidance', rows: '5', maxlength: '4000' });
-        const file = h('input', { type: 'file', name: 'image', accept: 'image/png,image/jpeg' });
+        const file = h('input', { type: 'file', name: 'image', accept: IMAGE_ACCEPT });
         const imageField = field({
-          label: 'Chart image (PNG or JPG, max 5 MB)',
+          label: 'Chart image (PNG, JPG or AVIF, max 5 MB)',
           control: file,
           name: 'image',
         });
