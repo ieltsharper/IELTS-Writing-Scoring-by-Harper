@@ -2,11 +2,12 @@
 // the essay page (scores, feedback, highlighted errors) and the result email.
 import { CRITERIA, criterionLabel, type Criterion, type TaskType } from '../../../shared/constants';
 import { h } from '../../dom';
-import type { ScoreView } from '../../types';
+import type { SampleView, ScoreView } from '../../types';
 import { badge, notice } from '../../ui/components';
 import { essayText, highlightLegend } from '../../ui/essayText';
 import { formatBand, formatDateTime } from '../../ui/format';
 import { markdown } from '../../ui/markdown';
+import { sampleSection } from '../../ui/sampleEssay';
 import { tabs } from '../../ui/tabs';
 import { scoreTable } from '../student/essayDetail';
 
@@ -38,6 +39,7 @@ export interface PreviewContent {
     note: string;
   }>;
   rewriteNote: string;
+  sample: SampleView | null;
 }
 
 function studentView(p: PreviewContent, server: ServerPreview): HTMLElement {
@@ -85,6 +87,7 @@ function studentView(p: PreviewContent, server: ServerPreview): HTMLElement {
           : h('p', { class: 'hint' }, 'No feedback for this criterion.'),
       ),
     ),
+    sampleSection(p.sample, p.taskType, 3),
     h('h3', null, `Essay with highlighted errors (${sorted.length})`),
     highlightLegend(),
     essayText(

@@ -3,11 +3,13 @@ import { overallBand } from '../../../shared/band';
 import {
   buildClaudePrompt,
   buildReconcilePrompt,
+  buildSamplePrompt,
   type ClaudeDraft,
   matchClaudeErrors,
   matchTopic,
   parseClaudeReply,
   parseReconcileReply,
+  parseSampleReply,
 } from '../../../shared/claude';
 import {
   CRITERIA,
@@ -66,6 +68,7 @@ interface FormState {
   category: CategoryValues;
   errors: FormError[];
   rewrite: { required: boolean; dueDate: string; note: string };
+  sample: { text: string; band: number | null; analysis: Record<Criterion, string> };
   notifyAgain: boolean;
 }
 
@@ -161,6 +164,13 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
       required: Boolean(rw && rw.status !== 'waived'),
       dueDate: rw ? localDate(new Date(rw.dueAt)) : defaultDue,
       note: rw?.note ?? '',
+    },
+    sample: {
+      text: essay.score?.sample?.text ?? '',
+      band: essay.score?.sample?.band ?? null,
+      analysis: Object.fromEntries(
+        CRITERIA.map((c) => [c, essay.score?.sample?.analysis[c] ?? '']),
+      ) as Record<Criterion, string>,
     },
     notifyAgain: false,
   };
@@ -296,6 +306,7 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
   const topicBox = h('div');
   const errorsBox = h('div');
   const rewriteBox = h('div');
+  const sampleEssayBox = h('div');
 
   const renderScores = () => {
     replace(
@@ -596,6 +607,140 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
     );
   };
 
+  // Optional sample essay for the student: the teacher sets its band; Claude can draft it.
+  const renderSample = () => {
+    const band = bandSelect('sample.band', state.sample.band, 'Choose…');
+    band.id = 'sample-band';
+    band.addEventListener('change', () => {
+      state.sample.band = band.value === '' ? null : Number(band.value);
+      dirty = true;
+    });
+    const text = h('textarea', { name: 'sample.text', rows: '14', maxlength: '10000' });
+    text.value = state.sample.text;
+    const words = h('p', { class: 'hint', 'aria-live': 'polite' });
+    const showWords = () => {
+      words.textContent = state.sample.text.trim()
+        ? `${countWords(state.sample.text)} words`
+        : 'No sample. Leave this empty if you do not want to give one.';
+    };
+    showWords();
+    text.addEventListener('input', () => {
+      state.sample.text = text.value;
+      dirty = true;
+      showWords();
+    });
+    const analysis = CRITERIA.map((c) => {
+      const ta = h('textarea', { name: `sample-analysis-${c}`, rows: '3', maxlength: '10000' });
+      ta.value = state.sample.analysis[c];
+      ta.addEventListener('input', () => {
+        state.sample.analysis[c] = ta.value;
+        dirty = true;
+      });
+      return field({
+        label: `Why the sample is better: ${criterionLabel(c, taskType)} (Markdown)`,
+        control: ta,
+        name: `sample.analysis.${c}`,
+      });
+    });
+
+    // Draft with Claude: copy a prompt for the chosen band, paste the reply, load it.
+    const reply = h('textarea', {
+      rows: '6',
+      'aria-label': 'Claude’s sample reply',
+      placeholder: 'Paste Claude’s JSON reply here',
+      maxlength: '20000',
+    });
+    const claudeStatus = h('div', { 'aria-live': 'polite' });
+    const copySample = h('button', { type: 'button', class: 'btn' }, 'Copy sample prompt');
+    copySample.addEventListener('click', async () => {
+      if (state.sample.band === null) {
+        replace(claudeStatus, notice('error', 'Choose the band of the sample first.'));
+        band.focus();
+        return;
+      }
+      try {
+        await copyText(
+          buildSamplePrompt({
+            taskType,
+            prompt: essay.prompt,
+            body: essay.body,
+            band: state.sample.band,
+            scores: state.scores,
+          }),
+        );
+        replace(claudeStatus);
+        toast(
+          taskType === 'task1_academic'
+            ? 'Sample prompt copied. Paste it into Claude (attach the chart if it is a new chat).'
+            : 'Sample prompt copied. Paste it into Claude.',
+        );
+      } catch (err) {
+        toast(errorMessage(err), 'error');
+      }
+    });
+    const loadSample = h('button', { type: 'button', class: 'btn btn-primary' }, 'Load sample');
+    loadSample.addEventListener('click', async () => {
+      const parsed = parseSampleReply(reply.value);
+      if (!parsed.ok) {
+        replace(
+          claudeStatus,
+          notice(
+            'error',
+            h('p', null, h('strong', null, 'Nothing was loaded.')),
+            h('ul', null, ...parsed.errors.map((e) => h('li', null, e))),
+          ),
+        );
+        return;
+      }
+      if (state.sample.text.trim() || CRITERIA.some((c) => state.sample.analysis[c].trim())) {
+        const ok = await confirmDialog({
+          title: 'Replace the sample essay?',
+          message: 'The sample essay and its explanations in the form will be replaced.',
+          confirmLabel: 'Replace',
+        });
+        if (!ok) return;
+      }
+      state.sample.text = parsed.value.text;
+      state.sample.analysis = { ...parsed.value.analysis };
+      dirty = true;
+      renderSample();
+      document.getElementById('sample-heading')?.scrollIntoView({ behavior: 'smooth' });
+      toast('Sample loaded. Review it before submitting.');
+    });
+
+    replace(
+      sampleEssayBox,
+      h(
+        'fieldset',
+        { class: 'card' },
+        h('legend', { id: 'sample-heading' }, 'Sample essay (optional)'),
+        h(
+          'p',
+          { class: 'hint' },
+          'The student sees the sample, its band and your explanations with the feedback once the score is submitted.',
+        ),
+        field({ label: 'Band of the sample', control: band, name: 'sample.band' }),
+        h(
+          'details',
+          null,
+          h('summary', null, 'Draft the sample with Claude'),
+          h(
+            'p',
+            { class: 'hint' },
+            'Choose the band above, copy the prompt into Claude, then paste Claude’s whole answer here. You set the band; Claude writes at that level.',
+          ),
+          copySample,
+          reply,
+          h('div', { class: 'actions' }, loadSample),
+          claudeStatus,
+        ),
+        field({ label: 'Sample essay', control: text, name: 'sample.text' }),
+        words,
+        ...analysis,
+      ),
+    );
+  };
+
   const sampleBox = h('input', { type: 'checkbox', id: 'is-sample', checked: data.isSample });
   sampleBox.addEventListener('change', async () => {
     try {
@@ -668,6 +813,8 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
       problems.push('Place or delete every unplaced error.');
     if (state.rewrite.required && !state.rewrite.dueDate)
       problems.push('Choose a rewrite due date.');
+    if (state.sample.text.trim() && state.sample.band === null)
+      problems.push('Choose the band of the sample essay.');
     return problems;
   };
 
@@ -686,6 +833,7 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
       note: e.note,
     })),
     rewrite: state.rewrite,
+    sample: state.sample,
     submit,
     notifyAgain: state.notifyAgain,
     requestId,
@@ -780,6 +928,10 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
           note: e.note,
         })),
         rewriteNote: state.rewrite.required ? state.rewrite.note : '',
+        sample:
+          state.sample.text.trim() && state.sample.band !== null
+            ? { text: state.sample.text, band: state.sample.band, analysis: state.sample.analysis }
+            : null,
       },
       preview,
       { alreadyScored: essay.status === 'scored' },
@@ -804,6 +956,7 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
     renderTopic();
     renderErrors();
     renderRewrite();
+    renderSample();
     renderText();
   };
 
@@ -821,6 +974,7 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
     errorsBox,
     generalBox,
     feedbackBox,
+    sampleEssayBox,
     rewriteBox,
     h(
       'div',

@@ -196,3 +196,18 @@ No service in the spec was replaced; everything runs on GitHub Pages, Apps Scrip
   so the student's essay page and the scoring page show it ("Time spent X min (practice)").
   It is counted by the student's browser: a guide, not proof (test mode is timed by the server).
 - `[hidden]` now always hides (a class such as `.btn` no longer overrides it).
+
+## Sample essay for the student (2026-11-05)
+
+- The score form has an optional **Sample essay** section: the sample text, its band (chosen by
+  the teacher, 0–9 in 0.5 steps; required when there is text) and, per criterion, why the sample
+  is better than the student's essay (Markdown). Leaving the text empty means no sample.
+- Saved with the score in `Scores.sample_essay`, `sample_band` and `sample_analysis_json` (run
+  `setup` once to add the columns). The student sees it on the essay page under the feedback,
+  only once the score is submitted, like the rest of the result; the preview shows it too, and
+  the result email says a sample was added (with its band).
+- **Draft the sample with Claude**: the prompt carries the task, the essay (as data), the
+  student's scores and the teacher's band, and asks for a realistic sample at exactly that band
+  that keeps the student's ideas where they work, plus the per-criterion reasons in Vietnamese,
+  as JSON (`sample_essay`, `analysis`). The Project instructions allow this JSON as an exception.
+  The band is never taken from Claude.

@@ -1611,3 +1611,13 @@ tbody tr:hover td {
   margin: 0;
   white-space: pre-wrap;
 }
+
+/* Sample essay from the teacher, shown with the feedback. */
+.sample-essay {
+  border-left: 4px solid var(--primary);
+}
+
+.sample-essay .sample-text {
+  white-space: pre-wrap;
+  line-height: 1.7;
+}

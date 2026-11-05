@@ -87,6 +87,7 @@ export function resultJob(
         rewriteDueAt:
           rr && (rr.status === 'requested' || rr.status === 'overdue') ? rr.due_at : null,
         resent: type === 'result_resent',
+        sampleBand: score.sample?.band ?? null,
       });
     },
   };
@@ -161,6 +162,7 @@ export function resultMessage(
     topErrors: ReturnType<typeof groupTopErrors>;
     rewriteDueAt: string | null;
     resent: boolean;
+    sampleBand?: number | null;
   },
 ) {
   const taskType = essay.task_type as TaskType;
@@ -180,5 +182,6 @@ export function resultMessage(
     rewriteDue: data.rewriteDueAt ? formatForEmail(ctx, data.rewriteDueAt, student.timezone) : null,
     url: appUrl(ctx, `/essays/${essay.id}`),
     resent: data.resent,
+    sampleBand: data.sampleBand ?? null,
   });
 }

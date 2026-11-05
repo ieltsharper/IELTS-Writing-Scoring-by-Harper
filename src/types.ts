@@ -19,6 +19,14 @@ export interface ScoreView {
   feedback: Record<Criterion, string>;
   generalComment: string;
   updatedAt: string;
+  /** A sample essay from the teacher, with the band she gives it and why it is better. */
+  sample?: SampleView | null;
+}
+
+export interface SampleView {
+  text: string;
+  band: number;
+  analysis: Record<Criterion, string>;
 }
 
 export interface ErrorView {

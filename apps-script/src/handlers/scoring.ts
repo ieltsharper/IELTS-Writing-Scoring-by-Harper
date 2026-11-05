@@ -197,6 +197,7 @@ function readScoreForm(ctx: Ctx, payload: unknown) {
   if (feedbackJson.length > MAX_CELL - 1000) {
     r.addError('feedback', 'The feedback is too long in total. Please shorten it.');
   }
+  const sample = readSample(r);
   r.done();
   return {
     essay,
@@ -210,7 +211,35 @@ function readScoreForm(ctx: Ctx, payload: unknown) {
     category,
     errors,
     rewrite,
+    sample,
   };
+}
+
+/**
+ * Optional sample essay: the text, the band the teacher gives it and, per criterion, why it is
+ * better than the student's essay. Without text there is no sample (the band is ignored).
+ */
+function readSample(r: Reader) {
+  const sampleR = r.object('sample', true);
+  if (!sampleR) return null;
+  const text = sampleR.str('text', { max: LIMITS.sampleEssay, optional: true, trim: false });
+  const hasText = text.trim() !== '';
+  const band = sampleR.band('band', !hasText);
+  const analysisR = sampleR.object('analysis', true);
+  const analysis = Object.fromEntries(
+    CRITERIA.map((c) => [
+      c,
+      analysisR ? analysisR.str(c, { max: LIMITS.feedback, optional: true, trim: false }) : '',
+    ]),
+  ) as Record<Criterion, string>;
+  if (analysisR) sampleR.absorb('analysis', analysisR);
+  const analysisJson = JSON.stringify(analysis);
+  if (analysisJson.length > MAX_CELL - 1000) {
+    sampleR.addError('analysis', 'The sample analysis is too long in total. Please shorten it.');
+  }
+  r.absorb('sample', sampleR);
+  if (!hasText) return null;
+  return { text, band: band as number, analysis, analysisJson };
 }
 
 function saveScore(ctx: Ctx, payload: unknown) {
@@ -225,6 +254,7 @@ function saveScore(ctx: Ctx, payload: unknown) {
     category,
     errors,
     rewrite,
+    sample,
   } = readScoreForm(ctx, payload);
 
   // Scores (overall always recomputed with the app's rounding).
@@ -238,6 +268,9 @@ function saveScore(ctx: Ctx, payload: unknown) {
     feedback_json: feedbackJson,
     general_comment: generalComment,
     updated_at: ctx.nowIso,
+    sample_essay: sample?.text ?? '',
+    sample_band: sample ? sample.band : '',
+    sample_analysis_json: sample ? sample.analysisJson : '',
   };
   if (ctx.db.findOne('Scores', (s) => s.essay_id === essay.id)) {
     ctx.db.update('Scores', (s) => s.essay_id === essay.id, fields);
@@ -303,7 +336,7 @@ function saveScore(ctx: Ctx, payload: unknown) {
  */
 function previewResult(ctx: Ctx, payload: unknown) {
   const form = readScoreForm(ctx, { ...(payload as object), submit: true });
-  const { essay, scores, category, errors, rewrite, generalComment, notifyAgain } = form;
+  const { essay, scores, category, errors, rewrite, generalComment, notifyAgain, sample } = form;
   const student = ctx.db.byId('Users', essay.student_id);
   if (!student) throw new ApiError('not_found', 'Student not found.');
   const overall = overallBand(scores as number[]);
@@ -337,6 +370,7 @@ function previewResult(ctx: Ctx, payload: unknown) {
     ),
     rewriteDueAt,
     resent: wasScored,
+    sampleBand: sample ? sample.band : null,
   });
   return {
     to: student.email,

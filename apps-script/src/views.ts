@@ -82,6 +82,28 @@ export interface ScoreView {
   feedback: Record<Criterion, string>;
   generalComment: string;
   updatedAt: string;
+  /** A sample essay from the teacher, with the band she gives it and why it is better. */
+  sample: SampleView | null;
+}
+
+export interface SampleView {
+  text: string;
+  band: number;
+  analysis: Record<Criterion, string>;
+}
+
+function sampleView(s: Row<'Scores'>): SampleView | null {
+  const band = num(s.sample_band);
+  if (!(s.sample_essay ?? '').trim() || band === null) return null;
+  const analysis = parseJson<Partial<Record<Criterion, string>>>(s.sample_analysis_json, {});
+  return {
+    text: s.sample_essay,
+    band,
+    analysis: Object.fromEntries(CRITERIA.map((c) => [c, analysis[c] ?? ''])) as Record<
+      Criterion,
+      string
+    >,
+  };
 }
 
 export function scoreView(ctx: Ctx, essayId: string): ScoreView | null {
@@ -103,6 +125,7 @@ export function scoreView(ctx: Ctx, essayId: string): ScoreView | null {
     >,
     generalComment: s.general_comment,
     updatedAt: s.updated_at,
+    sample: sampleView(s),
   };
 }
 

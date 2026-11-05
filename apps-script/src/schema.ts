@@ -92,6 +92,10 @@ export const SCHEMA = {
     'feedback_json',
     'general_comment',
     'updated_at',
+    /** Optional sample essay for the student, its band (set by the teacher) and why it is better. */
+    'sample_essay',
+    'sample_band',
+    'sample_analysis_json',
   ],
   RewriteRequests: ['id', 'essay_id', 'due_at', 'note', 'status', 'rewrite_essay_id', 'created_at'],
   ErrorCategories: ['id', 'criterion', 'label', 'active'],

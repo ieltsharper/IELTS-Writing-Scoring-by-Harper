@@ -150,6 +150,27 @@ test('student submits an essay; admin scores it with Claude and an external tool
     .getByLabel('Instructions for the student')
     .fill('Fix the spelling and agreement errors.');
 
+  // ---- Adds a sample essay at the teacher's band, drafted with Claude ----
+  await page.getByLabel('Band of the sample').selectOption('7.5');
+  await page.getByText('Draft the sample with Claude').click();
+  await page.getByRole('button', { name: 'Copy sample prompt' }).click();
+  await expect(page.getByText('Sample prompt copied.')).toBeVisible();
+  await page.getByLabel('Claude’s sample reply').fill(
+    JSON.stringify({
+      sample_essay: 'Universities shape the future of a country.\n\nFirst, free study helps.',
+      analysis: {
+        task: 'Bài mẫu trả lời rõ **cả hai** quan điểm.',
+        coherence: 'Mỗi đoạn một ý chính.',
+        lexical: 'Từ vựng chính xác hơn.',
+        grammar: 'Câu phức đa dạng hơn.',
+      },
+    }),
+  );
+  await page.getByRole('button', { name: 'Load sample' }).click();
+  await expect(page.getByLabel('Sample essay', { exact: true })).toHaveValue(
+    /Universities shape the future/,
+  );
+
   // ---- Submits ----
   await page.getByRole('button', { name: 'Preview and submit score' }).click();
   // ---- Previews what the student will receive, then sends ----
@@ -161,6 +182,7 @@ test('student submits an essay; admin scores it with Claude and an external tool
     preview.locator('.preview-student').getByText('A clear answer with a few accuracy problems.'),
   ).toBeVisible();
   await expect(preview.locator('mark.err')).toHaveCount(2);
+  await expect(preview.getByRole('heading', { name: 'Sample essay · Band 7.5' })).toBeVisible();
   await preview.getByRole('tab', { name: 'Email' }).click();
   await expect(preview.getByText('Your score: Task 2 – Band 6.0')).toBeVisible();
   await expect(preview.getByText(STUDENT_EMAIL).first()).toBeVisible();
@@ -203,6 +225,9 @@ test('student submits an essay; admin scores it with Claude and an external tool
   await page.goto(essayUrl);
   await expect(page.locator('.band-hero strong')).toHaveText('6.0');
   await expect(page.getByRole('heading', { name: 'Rewrite required' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sample essay · Band 7.5' })).toBeVisible();
+  await expect(page.getByText('Universities shape the future of a country.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Why the sample scores higher' })).toBeVisible();
   await expect(page.getByText('AI4IELTS')).toHaveCount(0);
   await expect(page.getByText('Great essay!')).toHaveCount(0);
 });

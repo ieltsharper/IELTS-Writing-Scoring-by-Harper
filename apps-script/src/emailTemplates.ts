@@ -76,6 +76,8 @@ export interface ResultEmailData {
   rewriteDue: string | null;
   url: string;
   resent: boolean;
+  /** Band of the sample essay the teacher added, if any. */
+  sampleBand?: number | null;
 }
 
 export function resultEmail(d: ResultEmailData): MailMessage {
@@ -96,6 +98,10 @@ export function resultEmail(d: ResultEmailData): MailMessage {
   const rewrite = d.rewriteDue
     ? `<p style="margin:12px 0;padding:12px;background:#fef3c7;color:#78350f">Rewrite required by <strong>${e(d.rewriteDue)}</strong>.</p>`
     : '';
+  const hasSample = d.sampleBand !== null && d.sampleBand !== undefined;
+  const sampleLine = hasSample
+    ? `Your teacher also wrote a sample essay (Band ${formatBand(d.sampleBand!)}) and explained why it scores higher. Compare it with your essay on the website.`
+    : '';
   return layout({
     to: d.to,
     subject: `${d.resent ? 'Updated score' : 'Your score'}: ${d.taskTypeLabel} – Band ${formatBand(d.overall)}`,
@@ -109,6 +115,7 @@ export function resultEmail(d: ResultEmailData): MailMessage {
       d.summary ? p(d.summary) : '',
       errors,
       rewrite,
+      sampleLine ? p(sampleLine) : '',
       p('Your full feedback and highlighted essay are on the website.'),
     ],
     button: { label: 'View full feedback', url: d.url },
@@ -130,6 +137,7 @@ export function resultEmail(d: ResultEmailData): MailMessage {
           ]
         : []),
       ...(d.rewriteDue ? ['', `Rewrite required by ${d.rewriteDue}.`] : []),
+      ...(sampleLine ? ['', sampleLine] : []),
     ],
   });
 }

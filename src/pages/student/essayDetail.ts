@@ -21,6 +21,7 @@ import {
 } from '../../ui/format';
 import { remoteImage } from '../../ui/image';
 import { markdown } from '../../ui/markdown';
+import { sampleSection } from '../../ui/sampleEssay';
 import { statusBadge } from './essays';
 
 export function scoreTable(score: ScoreView, taskType: TaskType): HTMLElement {
@@ -234,6 +235,7 @@ export function essayDetailPage(ctx: RouteContext): Node {
               markdown(essay.score!.feedback[c]),
             ),
           ),
+          sampleSection(essay.score.sample, essay.taskType),
         );
       }
 
