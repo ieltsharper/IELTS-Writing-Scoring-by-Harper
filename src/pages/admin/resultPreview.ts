@@ -69,7 +69,7 @@ function studentView(p: PreviewContent, server: ServerPreview): HTMLElement {
       ? notice(
           'warning',
           h('h3', null, 'Rewrite required'),
-          p.rewriteNote ? h('p', null, p.rewriteNote) : null,
+          p.rewriteNote ? h('p', { class: 'guidance-text' }, p.rewriteNote) : null,
           h('p', null, `Due ${formatDateTime(server.rewriteDueAt)}`),
         )
       : null,
@@ -87,7 +87,6 @@ function studentView(p: PreviewContent, server: ServerPreview): HTMLElement {
           : h('p', { class: 'hint' }, 'No feedback for this criterion.'),
       ),
     ),
-    sampleSection(p.sample, p.taskType, 3),
     h('h3', null, `Essay with highlighted errors (${sorted.length})`),
     highlightLegend(),
     essayText(
@@ -122,6 +121,7 @@ function studentView(p: PreviewContent, server: ServerPreview): HTMLElement {
           ),
         )
       : null,
+    sampleSection(p.sample, p.taskType, 3),
   );
 }
 

@@ -228,6 +228,13 @@ test('student submits an essay; admin scores it with Claude and an external tool
   await expect(page.getByRole('heading', { name: 'Sample essay · Band 7.5' })).toBeVisible();
   await expect(page.getByText('Universities shape the future of a country.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Why the sample scores higher' })).toBeVisible();
+  // The sample comes after the corrected essay and its error list.
+  const headings = await page.locator('h2').allTextContents();
+  expect(headings.findIndex((t) => t.startsWith('Sample essay'))).toBeGreaterThan(
+    headings.findIndex((t) => t.startsWith('Errors (')),
+  );
+  // The rewrite instructions keep the teacher's line breaks.
+  await expect(page.locator('.notice .guidance-text').first()).toHaveCSS('white-space', 'pre-wrap');
   await expect(page.getByText('AI4IELTS')).toHaveCount(0);
   await expect(page.getByText('Great essay!')).toHaveCount(0);
 });

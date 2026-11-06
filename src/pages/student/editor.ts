@@ -424,12 +424,8 @@ function practiceEditor(
     isRewrite && parent?.rewrite
       ? notice(
           'info',
-          h(
-            'p',
-            null,
-            h('strong', null, 'Rewrite request: '),
-            parent.rewrite.note || 'Rewrite this essay.',
-          ),
+          h('p', null, h('strong', null, 'Rewrite request:')),
+          h('p', { class: 'guidance-text' }, parent.rewrite.note || 'Rewrite this essay.'),
           h(
             'p',
             null,

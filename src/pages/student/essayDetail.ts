@@ -180,7 +180,7 @@ export function essayDetailPage(ctx: RouteContext): Node {
           notice(
             rw.status === 'overdue' ? 'error' : 'warning',
             h('h2', null, 'Rewrite required'),
-            rw.note ? h('p', null, rw.note) : null,
+            rw.note ? h('p', { class: 'guidance-text' }, rw.note) : null,
             h(
               'p',
               null,
@@ -235,7 +235,6 @@ export function essayDetailPage(ctx: RouteContext): Node {
               markdown(essay.score!.feedback[c]),
             ),
           ),
-          sampleSection(essay.score.sample, essay.taskType),
         );
       }
 
@@ -275,6 +274,8 @@ export function essayDetailPage(ctx: RouteContext): Node {
               }),
             ),
           ),
+          // The sample comes after the corrected essay, so students first see their own mistakes.
+          sampleSection(essay.score.sample, essay.taskType),
         );
       } else {
         sections.push(h('h2', null, 'Your essay'), textBox);
