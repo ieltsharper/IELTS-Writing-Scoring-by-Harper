@@ -206,3 +206,89 @@ describe('practice time from the portal', () => {
     });
   });
 });
+
+describe('AI pre-check from the portal', () => {
+  const precheck = {
+    firstDraft: `Public transport are cheap. ${BODY}`,
+    firstAt: '2026-11-13T02:00:00.000Z',
+    checks: 2,
+    unavailable: null,
+    errors: [
+      {
+        round: 1,
+        criterion: 'GRA',
+        type: 'Subject-verb agreement',
+        excerpt: 'transport are',
+        correction: 'transport is',
+        hint: 'Is the subject singular or plural?',
+        status: 'fixed',
+        revealed: true,
+      },
+      {
+        round: 2,
+        criterion: 'LR',
+        type: 'Collocation',
+        excerpt: 'cheaper for everyone',
+        correction: 'more affordable for everyone',
+        hint: 'Think about a more formal word.',
+        status: 'dismissed',
+        revealed: false,
+      },
+      { excerpt: '' },
+      'not an error',
+    ],
+    extra: 'ignored',
+  };
+
+  it('stores the first draft and errors and shows them to the teacher only', () => {
+    const { app, admin, base } = setup();
+    const res = app.call('portal.essays.import', base({ submissionId: 'sub-pre-0001', precheck }));
+    const view = app.call('admin.essay', { id: res.essayId }, admin).essay.precheck;
+    expect(view).toMatchObject({ checks: 2, unavailable: null, firstDraft: precheck.firstDraft });
+    expect(view.errors).toHaveLength(2);
+    expect(view.errors[0]).toMatchObject({ status: 'fixed', revealed: true, criterion: 'GRA' });
+    expect(view.errors[1]).toMatchObject({ status: 'dismissed', criterion: 'LR' });
+    expect(view.extra).toBeUndefined();
+  });
+
+  it('keeps an essay sent unchecked, ignores a bad pre-check and test essays', () => {
+    const { app, admin, base } = setup();
+    const essay = (over: Record<string, unknown>) => {
+      const res = app.call('portal.essays.import', base(over));
+      return app.call('admin.essay', { id: res.essayId }, admin).essay.precheck;
+    };
+    expect(
+      essay({
+        submissionId: 'sub-pre-0002',
+        precheck: { firstDraft: BODY, checks: 0, unavailable: 'limit', errors: [] },
+      }),
+    ).toMatchObject({ checks: 0, unavailable: 'limit', errors: [] });
+    expect(essay({ submissionId: 'sub-pre-0003', precheck: 'nonsense' })).toBeNull();
+    expect(essay({ submissionId: 'sub-pre-0004' })).toBeNull();
+  });
+
+  it('fits in one sheet cell however long it is', async () => {
+    const { precheckJson, readPrecheck, PRECHECK_MAX_CHARS } =
+      await import('../../shared/precheck');
+    const big = readPrecheck(
+      {
+        firstDraft: 'word '.repeat(4000),
+        checks: 6,
+        errors: Array.from({ length: 80 }, (_, i) => ({
+          round: 1,
+          criterion: 'LR',
+          type: 'Word choice',
+          excerpt: `excerpt ${i} `.repeat(15),
+          correction: 'c'.repeat(300),
+          hint: 'h'.repeat(400),
+          status: 'open',
+        })),
+      },
+      20000,
+    )!;
+    expect(big.errors).toHaveLength(60);
+    const json = precheckJson(big);
+    expect(json.length).toBeLessThanOrEqual(PRECHECK_MAX_CHARS);
+    expect(JSON.parse(json).errors).toHaveLength(60);
+  });
+});

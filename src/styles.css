@@ -1621,3 +1621,24 @@ tbody tr:hover td {
   white-space: pre-wrap;
   line-height: 1.7;
 }
+
+/* Scoring page: the portal's AI pre-check (src/pages/admin/precheckPanel.ts). */
+.precheck-list {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.precheck-list li {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.precheck-list p {
+  margin: 0 0 4px;
+}
+.precheck-list p:last-child {
+  margin-bottom: 0;
+}

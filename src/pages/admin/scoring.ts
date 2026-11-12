@@ -41,6 +41,7 @@ import {
 } from '../../ui/components';
 import { type CategoryValues, categoryFields } from '../../ui/categoryFields';
 import { copyText } from '../../ui/clipboard';
+import { precheckPanel } from './precheckPanel';
 import { openResultPreview, type ServerPreview } from './resultPreview';
 import { essayText, highlightLegend, selectionOffsets } from '../../ui/essayText';
 import { formatBand, formatDateTime, modeLabel, signed, taskLabel } from '../../ui/format';
@@ -266,6 +267,7 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
     selectionInfo,
     highlightLegend(),
     textHolder,
+    essay.precheck ? precheckPanel(essay.precheck, essay.body) : null,
     data.parent
       ? h(
           'details',

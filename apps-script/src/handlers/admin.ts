@@ -2,6 +2,7 @@
 import { overallBand } from '../../../shared/band';
 import { parseClaudeReply } from '../../../shared/claude';
 import { CRITERIA, LIMITS, TASK_TYPES } from '../../../shared/constants';
+import { parsePrecheck } from '../../../shared/precheck';
 import { calibrationFor } from '../calibration';
 import { essayLabel } from '../category';
 import { ApiError, bool, type Ctx, type EssayRow, num, parseJson } from '../context';
@@ -181,6 +182,8 @@ function adminEssay(ctx: Ctx, payload: unknown) {
       driveFolderId: essay.drive_folder_id,
       queueStatus: queueStatus(ctx, essay),
       startedAt: essay.started_at || null,
+      /** The portal's AI pre-check (practice essays sent from the portal). */
+      precheck: parsePrecheck(essay.precheck_json),
     },
     student: student
       ? { id: student.id, name: student.name, email: student.email, className: classLabel }

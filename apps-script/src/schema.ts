@@ -49,6 +49,8 @@ export const SCHEMA = {
     'diagram_type',
     /** Task 2: agree_disagree, discussion, pros_cons, res or two_part. */
     'essay_type',
+    /** Portal practice essays: the AI pre-check history as JSON (shared/precheck.ts). */
+    'precheck_json',
   ],
   Assignments: [
     'id',

@@ -15,7 +15,9 @@ const APP_URL = process.env.MOCK_APP_URL ?? 'http://localhost:5173/';
 let svc: MemoryServices = fresh();
 
 function fresh(): MemoryServices {
-  const s = createMemoryServices({ APP_URL }, { realTime: true });
+  // A fixed portal key (local only) so portal.essays.import can be tried here.
+  const PORTAL_SECRET = 'mock-portal-secret-'.padEnd(64, '0');
+  const s = createMemoryServices({ APP_URL, PORTAL_SECRET }, { realTime: true });
   runSetup(s);
   return s;
 }

@@ -9,6 +9,7 @@
 // HARPER_SECRET in the portal). Browsers never see it.
 import { LIMITS, TASK_TYPES, type TaskType } from '../../../shared/constants';
 import { checkImage } from '../../../shared/image';
+import { precheckJson, readPrecheck } from '../../../shared/precheck';
 import { countWords } from '../../../shared/wordCount';
 import { categoryColumns, readCategory } from '../category';
 import { newToken, takeRate } from '../auth';
@@ -130,6 +131,8 @@ function importEssay(ctx: Ctx, payload: unknown) {
   if (mode === 'test' && !startedAt) {
     r.addError('startedAt', 'Test mode needs the start time.');
   }
+  // Practice: the AI pre-check the student did in the portal (optional; read leniently).
+  const precheck = mode === 'practice' ? readPrecheck(r.raw('precheck'), LIMITS.body) : null;
   r.done();
 
   const source = `portal:${submissionId}`;
@@ -162,6 +165,7 @@ function importEssay(ctx: Ctx, payload: unknown) {
     scored_at: '',
     test_date: '',
     source,
+    precheck_json: precheck ? precheckJson(precheck) : '',
   });
   const submitted = finalizeSubmission(ctx, essay, {
     autoSubmitted,

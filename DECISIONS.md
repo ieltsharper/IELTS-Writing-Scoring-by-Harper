@@ -211,3 +211,15 @@ No service in the spec was replaced; everything runs on GitHub Pages, Apps Scrip
   that keeps the student's ideas where they work, plus the per-criterion reasons in Vietnamese,
   as JSON (`sample_essay`, `analysis`). The Project instructions allow this JSON as an exception.
   The band is never taken from Claude.
+
+## Portal AI pre-check on the scoring page (2026-11-13)
+
+- Practice essays from IELTS Harper Portal may carry `precheck`: the AI check (vocabulary and grammar only) the
+  student did before sending, with the first draft, the number of checks, each error (hint, correction, whether
+  the student fixed it, marked it correct, or asked to see the correction) and why the AI was unavailable, if so.
+- Read leniently (`shared/precheck.ts`; bad parts dropped, test essays ignored) and stored as JSON in
+  `Essays.precheck_json`, kept under one cell (hints shortened, then the first draft dropped if needed). Run
+  `setup` once to add the column; until then the import works and the pre-check is simply not kept.
+- Shown only to the teacher, as a closed "AI pre-check in the portal" panel under the essay text on the scoring
+  page. Students do not see it in Harper.
+- The mock API has a fixed local portal key so `portal.essays.import` can be tried locally.

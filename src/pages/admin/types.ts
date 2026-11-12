@@ -1,6 +1,7 @@
 import type { ClaudeDraft } from '../../../shared/claude';
 import type { Criterion } from '../../../shared/constants';
 import type { SourceCalibration } from '../../../shared/stats';
+import type { Precheck } from '../../../shared/precheck';
 import type { EssayDetail, ErrorView, ScoreView } from '../../types';
 
 export interface QueueItem {
@@ -51,6 +52,7 @@ export interface AdminEssayResponse {
     driveStatus: string;
     driveFolderId: string;
     queueStatus: string;
+    precheck: Precheck | null;
   };
   student: { id: string; name: string; email: string; className: string } | null;
   assignment: { id: string; title: string } | null;
