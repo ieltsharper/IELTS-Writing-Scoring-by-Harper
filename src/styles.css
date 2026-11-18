@@ -1530,6 +1530,53 @@ tbody tr:hover td {
   border-left-color: #9333ea;
 }
 
+/* Hierarchy inside a criterion card: big coloured title, then coloured lead-ins
+   ("Điểm tốt:", "Lý do chưa đạt 7:", "Bước tiếp theo:"), then the body text. */
+.criterion-card {
+  --crit: #374151;
+  --crit-soft: #f3f4f6;
+}
+.criterion-card.crit-task {
+  --crit: #b91c1c;
+  --crit-soft: #fef2f2;
+}
+.criterion-card.crit-coherence {
+  --crit: #c2410c;
+  --crit-soft: #fff7ed;
+}
+.criterion-card.crit-lexical {
+  --crit: #1d4ed8;
+  --crit-soft: #eff6ff;
+}
+.criterion-card.crit-grammar {
+  --crit: #7e22ce;
+  --crit-soft: #faf5ff;
+}
+.criterion-card > h3,
+.criterion-card > h4 {
+  font-size: 1.35rem;
+  line-height: 1.25;
+  color: var(--crit);
+  margin: 0 0 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--crit-soft);
+}
+.criterion-card .markdown p {
+  margin: 0 0 14px;
+}
+.criterion-card .markdown p:last-child {
+  margin-bottom: 0;
+}
+.criterion-card .markdown p > strong:first-child {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--crit);
+}
+
 .crit-badge.crit-task {
   background: #fee2e2;
   color: #991b1b;
