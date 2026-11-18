@@ -1012,13 +1012,20 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
       lastDraft = draft;
     },
     onLoad: async (draft, kind) => {
-      const what = kind === 'reconciled' ? 'Claude’s reconciled result' : 'Claude’s draft';
+      const errorsOnly = kind === 'errors';
+      const what =
+        kind === 'reconciled'
+          ? 'Claude’s reconciled result'
+          : errorsOnly
+            ? 'Claude’s error tags'
+            : 'Claude’s draft';
       if (state.errors.length || CRITERIA.some((c) => state.scores[c] !== null)) {
         const ok = await confirmDialog({
-          title: `Replace the form with ${what}?`,
-          message:
-            'Scores, feedback and tagged errors in the form will be replaced. Nothing is sent to the student.',
-          confirmLabel: 'Load into form',
+          title: errorsOnly ? 'Replace the tagged errors?' : `Replace the form with ${what}?`,
+          message: errorsOnly
+            ? 'The tagged errors in the form will be replaced. Scores and feedback stay as they are. Nothing is sent to the student.'
+            : 'Scores, feedback and tagged errors in the form will be replaced. Nothing is sent to the student.',
+          confirmLabel: errorsOnly ? 'Load errors' : 'Load into form',
         });
         if (!ok) return;
       }
@@ -1027,12 +1034,14 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
         activeCats.map((c) => ({ id: c.id, label: c.label })),
         essay.body,
       );
-      state.scores = { ...draft.scores };
-      state.feedback = { ...draft.feedback };
-      state.generalComment = draft.generalComment;
+      if (!errorsOnly) {
+        state.scores = { ...draft.scores };
+        state.feedback = { ...draft.feedback };
+        state.generalComment = draft.generalComment;
+      }
       // Task 1 Academic has no topic; only Task 2 takes Claude's suggested topic.
       const topic =
-        taskType === 'task2'
+        taskType === 'task2' && !errorsOnly
           ? matchTopic(
               draft.suggestedTopic,
               data.topics.filter((t) => t.active),
@@ -1066,7 +1075,7 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
           unplaced
             ? h('p', null, `${unplaced} excerpt(s) were not found exactly: place or delete them.`)
             : null,
-          taskType === 'task2' && draft.suggestedTopic && !topic
+          taskType === 'task2' && !errorsOnly && draft.suggestedTopic && !topic
             ? h(
                 'p',
                 null,
@@ -1326,7 +1335,7 @@ function buildClaudePanel(opts: {
   data: AdminEssayResponse;
   claudePromptText: () => string;
   onParsed: (draft: ClaudeDraft) => void;
-  onLoad: (draft: ClaudeDraft, kind: 'draft' | 'reconciled') => void;
+  onLoad: (draft: ClaudeDraft, kind: 'draft' | 'reconciled' | 'errors') => void;
   onReconcileCopy: () => void;
   onReconcileSaved: (text: string, at: string) => void;
 }) {
@@ -1354,6 +1363,12 @@ function buildClaudePanel(opts: {
     );
     const load = h('button', { type: 'button', class: 'btn btn-primary' }, 'Load into form');
     load.addEventListener('click', () => opts.onLoad(draft, 'draft'));
+    // A scored essay can take only the new error tags, keeping its scores and feedback.
+    const loadErrors =
+      essay.status === 'scored'
+        ? h('button', { type: 'button', class: 'btn' }, 'Load errors only')
+        : null;
+    loadErrors?.addEventListener('click', () => opts.onLoad(draft, 'errors'));
     replace(
       result,
       notice(
@@ -1376,7 +1391,14 @@ function buildClaudePanel(opts: {
           `${draft.errors.length} error(s): ${unknown.filter((u) => u.unknownCategory).length} with unknown category, ${unknown.filter((u) => u.unplaced).length} unplaced.`,
         ),
       ),
-      load,
+      h('div', { class: 'actions' }, load, loadErrors),
+      loadErrors
+        ? h(
+            'p',
+            { class: 'hint' },
+            '“Load errors only” keeps this essay’s scores and feedback and replaces just the tagged errors.',
+          )
+        : null,
     );
   };
 
