@@ -97,8 +97,11 @@ function studentView(p: PreviewContent, server: ServerPreview): HTMLElement {
         end: e.end,
         label: e.category,
         correction: e.correction,
+        note: e.note,
         criterion: e.criterion,
       })),
+      undefined,
+      { inlineCorrections: true },
     ),
     sorted.length
       ? h(

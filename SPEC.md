@@ -88,7 +88,7 @@ A third mode where the admin sets the prompt. It follows all Test mode rules (ti
 ### My essays
 
 - List with status: draft, pending, scored, rewrite due, rewrite submitted, overdue.
-- Essay detail page: final scores, feedback, tagged errors with corrections, and the essay text with errors highlighted.
+- Essay detail page: final scores, feedback, tagged errors with corrections, and the essay text with each error highlighted: the wrong words struck through, the correction right after them, and a hover tooltip with the category and the teacher's explanation.
 - If a rewrite exists, show the original and rewrite bands side by side.
 
 ### Topics I've written

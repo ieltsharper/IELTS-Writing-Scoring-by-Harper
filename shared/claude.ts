@@ -26,10 +26,11 @@ export const CLAUDE_JSON_EXAMPLE = `{
   "suggested_topic": "Education",
   "errors": [
     {
-      "excerpt": "exact English text copied from the essay",
+      "excerpt": "only the wrong word(s), copied exactly from the essay",
+      "context": "6 to 12 words copied exactly from the essay around the excerpt",
       "category": "Articles",
-      "correction": "the corrected or improved English text",
-      "note": "giải thích ngắn bằng tiếng Việt (không bắt buộc)"
+      "correction": "the corrected English text that replaces the excerpt",
+      "note": "giải thích bằng tiếng Việt: lỗi gì và vì sao phải sửa như vậy"
     }
   ]
 }`;
@@ -44,7 +45,12 @@ For every essay the teacher sends:
    - "lexical": Lexical Resource.
    - "grammar": Grammatical Range and Accuracy.
 2. Calibrate against the teacher's scored samples in this Project's files.
-3. Tag specific errors. Copy each "excerpt" EXACTLY from the essay (same spelling, punctuation and spacing) so the app can find it. Keep excerpts short: the words that are wrong plus a little context.
+3. Tag specific errors. The student will see the essay with each excerpt crossed out and your "correction" written right after it, so the student can see how to fix it at a glance.
+   - "excerpt": ONLY the word or the few words that are wrong, copied EXACTLY from the essay (same spelling, punctuation and spacing). Do not include correct words around them. For example, tag "decision" (correction "decisions"), not "advertisements play a crucial role in purchasing decision".
+   - "correction": the text that replaces the excerpt, so that the essay reads correctly when the excerpt is swapped for it. Use "" when the excerpt should simply be deleted (for example a redundant word). When a word is missing (for example an article), take the neighbouring word as the excerpt and write that word together with the missing word as the correction (excerpt "argument", correction "this argument"). When a whole clause or sentence is broken, the excerpt is that clause or sentence and the correction is the rewritten version.
+   - "context": 6 to 12 words copied exactly from the essay that contain the excerpt. It is used only to find the right place when the same word appears more than once. Always include it.
+   - Tag every error separately and do not let two excerpts overlap.
+   - "note": explain in Vietnamese what kind of mistake it is and why the correction is needed (the student reads this when pointing at the highlight). Always write a note.
 4. Use ONLY category labels from the error category list in this Project's files. If nothing fits, use the closest label.
 5. LANGUAGE: write all comments for the student in VIETNAMESE: the four "feedback" texts, "general_comment" and each error's "note". Keep the student's English where it belongs: "excerpt" is copied exactly from the essay (English) and "correction" is the corrected or improved English text. When a comment quotes words from the essay or suggests better English wording, keep those words in English (for example in quotation marks). Category labels stay exactly as in the category list.
 6. Write feedback in Markdown, addressed to the student, specific and encouraging. Do not give an overall band; the app calculates it.
@@ -115,6 +121,8 @@ Reminder: answer ONLY with the JSON object in the format from the Project instru
 
 export interface ClaudeError {
   excerpt: string;
+  /** Optional longer quote around the excerpt; only used to find its place. */
+  context?: string;
   category: string;
   correction: string;
   note: string;
@@ -149,6 +157,76 @@ function toBand(v: unknown): number | null {
   return isValidBand(n) ? (n as number) : null;
 }
 
+/**
+ * Fix harmless slips in Claude's JSON: raw line breaks or tabs inside strings, curly quotes
+ * used as the quotes around a text, and trailing commas. Valid JSON comes back unchanged.
+ */
+export function repairJson(text: string): string {
+  let out = '';
+  let inString = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (ch === '\\') {
+        out += ch + (text[i + 1] ?? '');
+        i++;
+      } else if (ch === '"') {
+        inString = false;
+        out += ch;
+      } else if (ch === '\n') out += '\\n';
+      else if (ch === '\r') out += '\\r';
+      else if (ch === '\t') out += '\\t';
+      else if (ch < ' ') out += ' ';
+      else out += ch;
+    } else if (ch === '"') {
+      inString = true;
+      out += ch;
+    } else if (ch === '“' || ch === '”') {
+      // Curly quotes outside a text are meant as the quotes around a key or value.
+      inString = true;
+      out += '"';
+    } else {
+      out += ch;
+    }
+  }
+  return out.replace(/,(\s*[}\]])/g, '$1');
+}
+
+/** Explain why a reply is not JSON, in words the teacher can act on. */
+function describeJsonProblem(cleaned: string): string {
+  const base = 'The reply is not valid JSON.';
+  if (!cleaned.includes('{')) {
+    return `${base} There is no JSON object in it. Ask Claude to answer only with the JSON object.`;
+  }
+  let depth = 0;
+  let inString = false;
+  for (let i = 0; i < cleaned.length; i++) {
+    const ch = cleaned[i];
+    if (inString) {
+      if (ch === '\\') i++;
+      else if (ch === '"') inString = false;
+    } else if (ch === '"') inString = true;
+    else if (ch === '{' || ch === '[') depth++;
+    else if (ch === '}' || ch === ']') depth--;
+  }
+  if (depth > 0 || inString) {
+    return `${base} It looks cut off at the end (${cleaned.length} characters received). Copy Claude's whole reply, or ask Claude to answer again with shorter feedback.`;
+  }
+  let detail = '';
+  const start = cleaned.indexOf('{');
+  try {
+    JSON.parse(cleaned.slice(start, cleaned.lastIndexOf('}') + 1));
+  } catch (e) {
+    const m = /position (\d+)/.exec(e instanceof Error ? e.message : '');
+    if (m) {
+      const at = start + Number(m[1]);
+      const near = cleaned.slice(Math.max(0, at - 30), at + 30).replace(/\s+/g, ' ');
+      detail = ` Problem near: “…${near}…”. A double quote inside a text probably needs a backslash, or Claude should use single quotes there.`;
+    }
+  }
+  return `${base} Ask Claude to answer only with the JSON object.${detail}`;
+}
+
 /** Parse and validate Claude's reply. On any problem, list every wrong field and return nothing. */
 export function parseClaudeReply(text: string): ParseResult {
   const errors: string[] = [];
@@ -156,22 +234,25 @@ export function parseClaudeReply(text: string): ParseResult {
   if (text.length > LIMITS.rawText) return { ok: false, errors: ['The reply is too long.'] };
   const cleaned = stripCodeFences(text);
   let data: unknown;
-  try {
-    data = JSON.parse(cleaned);
-  } catch {
-    // Claude sometimes adds a sentence around the JSON; try the outermost object.
-    const first = cleaned.indexOf('{');
-    const last = cleaned.lastIndexOf('}');
-    try {
-      if (first === -1 || last <= first) throw new Error('no object');
-      data = JSON.parse(cleaned.slice(first, last + 1));
-    } catch {
-      return {
-        ok: false,
-        errors: ['The reply is not valid JSON. Ask Claude to answer only with the JSON object.'],
-      };
+  let parsedOk = false;
+  // Claude sometimes adds a sentence around the JSON; try the outermost object too.
+  const first = cleaned.indexOf('{');
+  const last = cleaned.lastIndexOf('}');
+  const attempts = [cleaned];
+  if (first !== -1 && last > first) attempts.push(cleaned.slice(first, last + 1));
+  for (const attempt of attempts) {
+    for (const candidate of [attempt, repairJson(attempt)]) {
+      try {
+        data = JSON.parse(candidate);
+        parsedOk = true;
+        break;
+      } catch {
+        // try the next candidate
+      }
     }
+    if (parsedOk) break;
   }
+  if (!parsedOk) return { ok: false, errors: [describeJsonProblem(cleaned)] };
   if (!isObj(data)) return { ok: false, errors: ['The reply must be a JSON object.'] };
 
   const scores = {} as Record<Criterion, number>;
@@ -221,6 +302,7 @@ export function parseClaudeReply(text: string): ParseResult {
       const category = e.category;
       const correction = e.correction;
       const note = e.note ?? '';
+      const context = e.context ?? '';
       const bad: string[] = [];
       if (typeof excerpt !== 'string' || !excerpt.trim() || excerpt.length > LIMITS.excerpt)
         bad.push('excerpt');
@@ -229,6 +311,7 @@ export function parseClaudeReply(text: string): ParseResult {
       if (typeof correction !== 'string' || correction.length > LIMITS.correction)
         bad.push('correction');
       if (typeof note !== 'string' || note.length > LIMITS.note) bad.push('note');
+      if (typeof context !== 'string' || context.length > LIMITS.excerpt) bad.push('context');
       if (bad.length) {
         errors.push(
           `errors[${i}]: ${bad.join(', ')} ${bad.length === 1 ? 'is' : 'are'} missing or invalid.`,
@@ -237,6 +320,7 @@ export function parseClaudeReply(text: string): ParseResult {
       }
       list.push({
         excerpt: excerpt as string,
+        ...((context as string).trim() ? { context: context as string } : {}),
         category: (category as string).trim(),
         correction: correction as string,
         note: note as string,
@@ -283,6 +367,7 @@ export function matchClaudeErrors(
   const spans = placeExcerpts(
     body,
     errors.map((e) => e.excerpt),
+    errors.map((e) => e.context),
   );
   return errors.map((e, i) => {
     const categoryId = byLabel.get(e.category.trim().toLowerCase()) ?? null;

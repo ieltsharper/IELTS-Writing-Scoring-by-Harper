@@ -18,6 +18,7 @@ import {
   CRITERION_SHORT,
   diagramTypeLabel,
   essayTypeLabel,
+  LIMITS,
 } from '../../../shared/constants';
 import { findExcerpt } from '../../../shared/excerpt';
 import { countWords } from '../../../shared/wordCount';
@@ -200,6 +201,7 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
           e.unknownLabel ??
           'Uncategorised',
         correction: e.correction,
+        note: e.note,
         active: e.key === activeKey,
         criterion: data.categories.find((c) => c.id === e.categoryId)?.criterion ?? null,
       })),
@@ -284,6 +286,7 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
               end: e.end,
               label: e.category,
               correction: e.correction,
+              note: e.note,
               criterion: e.criterion,
             })),
           ),
@@ -650,7 +653,7 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
       rows: '6',
       'aria-label': 'Claude’s sample reply',
       placeholder: 'Paste Claude’s JSON reply here',
-      maxlength: '20000',
+      maxlength: String(LIMITS.rawText),
     });
     const claudeStatus = h('div', { 'aria-live': 'polite' });
     const copySample = h('button', { type: 'button', class: 'btn' }, 'Copy sample prompt');
@@ -1260,7 +1263,7 @@ function sourcePanel(
     ]),
   ) as Record<Criterion, HTMLSelectElement>;
   const overall = bandSelect(`${source.id}-overall`, existing?.overall ?? null, 'Not given');
-  const text = h('textarea', { rows: '8', maxlength: '20000' });
+  const text = h('textarea', { rows: '8', maxlength: String(LIMITS.rawText) });
   text.value = existing?.feedbackText ?? '';
   const status = h('div', { 'aria-live': 'polite' });
   const save = h(
@@ -1333,7 +1336,7 @@ function buildClaudePanel(opts: {
     rows: '10',
     'aria-label': 'Claude reply',
     placeholder: 'Paste Claude’s JSON reply here',
-    maxlength: '20000',
+    maxlength: String(LIMITS.rawText),
   });
   const result = h('div', { 'aria-live': 'polite' });
   const check = h('button', { type: 'button', class: 'btn btn-primary' }, 'Check reply');
@@ -1422,7 +1425,7 @@ function buildClaudePanel(opts: {
   const reconcileText = h('textarea', {
     rows: '6',
     'aria-label': 'Reconcile notes',
-    maxlength: '20000',
+    maxlength: String(LIMITS.rawText),
   });
   reconcileText.value = data.reconcile?.rawText ?? '';
   const reconcileStatus = h('div', { 'aria-live': 'polite' });

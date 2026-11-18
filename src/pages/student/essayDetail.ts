@@ -123,6 +123,7 @@ export function essayDetailPage(ctx: RouteContext): Node {
               end: e.end,
               label: e.category,
               correction: e.correction,
+              note: e.note,
               active: e.id === active,
               criterion: e.criterion,
             })),
@@ -133,6 +134,7 @@ export function essayDetailPage(ctx: RouteContext): Node {
                 .getElementById(`err-${id}`)
                 ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             },
+            { inlineCorrections: true },
           ),
         );
       renderText();
@@ -259,7 +261,7 @@ export function essayDetailPage(ctx: RouteContext): Node {
               h(
                 'p',
                 { class: 'hint' },
-                'Highlighted text has a tagged error. Select it to see the correction.',
+                'Struck-through words are wrong; the correction follows them. Hover over a highlight (or tap it) to see why.',
               ),
               highlightLegend(),
               textBox,

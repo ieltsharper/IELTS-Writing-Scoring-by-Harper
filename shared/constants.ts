@@ -72,7 +72,7 @@ export const LIMITS = {
   excerpt: 1000,
   correction: 1000,
   /** Pasted Claude replies and tool output. Sheets cells hold at most 50,000 characters. */
-  rawText: 20000,
+  rawText: 45000,
   /** A sample essay written for the student. */
   sampleEssay: 10000,
   errorsPerEssay: 200,

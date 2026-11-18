@@ -47,6 +47,40 @@ describe('parseClaudeReply', () => {
     expect(res.value.suggestedTopic).toBe('education');
   });
 
+  it('accepts raw line breaks inside texts, trailing commas and curly quotes', () => {
+    const json = JSON.stringify(valid, null, 2)
+      .replace('Clear position.', 'Clear\nposition.\tOk')
+      .replace(/\n\}$/, ',\n}');
+    expect(parseClaudeReply(json).ok).toBe(true);
+    const curly = JSON.stringify(valid).replace('"general_comment"', '“general_comment”');
+    expect(parseClaudeReply(curly).ok).toBe(true);
+  });
+
+  it('accepts a reply longer than 20,000 characters', () => {
+    const para = 'Nhận xét chi tiết. '.repeat(400);
+    const long = {
+      ...valid,
+      feedback: { task: para, coherence: para, lexical: para, grammar: para },
+    };
+    const text = JSON.stringify(long, null, 2);
+    expect(text.length).toBeGreaterThan(20000);
+    expect(parseClaudeReply(text).ok).toBe(true);
+  });
+
+  it('says when the reply looks cut off', () => {
+    const res = parseClaudeReply(JSON.stringify(valid, null, 2).slice(0, 300));
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.errors[0]).toContain('cut off');
+  });
+
+  it('points at an unescaped double quote', () => {
+    const res = parseClaudeReply(
+      JSON.stringify(valid).replace('Clear position.', 'Clear "position" here.'),
+    );
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.errors[0]).toContain('Problem near');
+  });
+
   it('accepts JSON wrapped in a sentence', () => {
     expect(parseClaudeReply(`Here you go:\n${JSON.stringify(valid)}\nThanks`).ok).toBe(true);
   });
@@ -184,6 +218,42 @@ describe('Copy for Claude', () => {
     const none = parseReconcileReply('1. Disagreements: none.\n3. Revised suggestion: keep 6.0.');
     expect(none.ok).toBe(false);
     if (!none.ok) expect(none.errors[0]).toMatch(/No revised JSON/);
+  });
+});
+
+describe('word-level error tagging', () => {
+  it('asks Claude for the wrong words only, a context quote and a note', async () => {
+    const { claudeProjectInstructions, CLAUDE_JSON_EXAMPLE } = await import('../../shared/claude');
+    const text = claudeProjectInstructions();
+    expect(text).toMatch(/ONLY the word or the few words that are wrong/);
+    expect(text).toContain('"context"');
+    expect(CLAUDE_JSON_EXAMPLE).toContain('"context"');
+  });
+
+  it('uses the context to place a repeated word, and still accepts errors without context', () => {
+    const body = 'He said that it works. I think that people agree.';
+    const reply = JSON.stringify({
+      scores: { task: 6, coherence: 6, lexical: 6, grammar: 6 },
+      feedback: { task: 'a', coherence: 'b', lexical: 'c', grammar: 'd' },
+      general_comment: 'ok',
+      suggested_topic: '',
+      errors: [
+        {
+          excerpt: 'that',
+          context: 'I think that people agree',
+          category: 'Articles',
+          correction: '',
+          note: 'n',
+        },
+        { excerpt: 'works', category: 'Articles', correction: 'work', note: '' },
+      ],
+    });
+    const parsed = parseClaudeReply(reply);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const matched = matchClaudeErrors(parsed.value.errors, [{ id: 'c1', label: 'Articles' }], body);
+    expect(matched[0].start).toBe(body.lastIndexOf('that'));
+    expect(matched[1].start).toBe(body.indexOf('works'));
   });
 });
 

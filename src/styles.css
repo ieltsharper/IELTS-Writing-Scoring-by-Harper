@@ -1127,6 +1127,60 @@ mark.err.active {
   outline-offset: 1px;
 }
 
+/* Corrected essay (student view): wrong words struck through, correction after them. */
+.essay-corrected mark.err {
+  padding: 0 3px;
+  border-radius: 3px;
+}
+.essay-corrected mark.err del {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  opacity: 0.8;
+}
+.essay-corrected mark.err ins {
+  text-decoration: none;
+  font-weight: 700;
+  margin-left: 0.35em;
+  color: #064e3b;
+}
+
+/* Tooltip shown on hover / focus / tap of a highlight. */
+.err-tooltip {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  max-width: min(360px, calc(100vw - 16px));
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #111827;
+  font:
+    0.9rem/1.45 system-ui,
+    sans-serif;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.18);
+  pointer-events: none;
+  z-index: 1000;
+}
+.err-tooltip[hidden] {
+  display: none;
+}
+.err-tip-item + .err-tip-item {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+.err-tip-head {
+  color: #374151;
+}
+.err-tip-note {
+  margin-top: 4px;
+}
+.err-tip-fix {
+  margin-top: 4px;
+  color: #064e3b;
+}
+
 .highlight-legend {
   display: flex;
   flex-wrap: wrap;
