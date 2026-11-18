@@ -4,19 +4,31 @@
     {
       "name": "mock-api",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "mock-api"],
+      "runtimeArgs": [
+        "run",
+        "mock-api"
+      ],
       "port": 8787
     },
     {
       "name": "preview-build",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["vite", "preview", "--port", "4173", "--strictPort"],
+      "runtimeArgs": [
+        "vite",
+        "preview",
+        "--port",
+        "4173",
+        "--strictPort"
+      ],
       "port": 4173
     },
     {
       "name": "web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:mock"],
+      "runtimeArgs": [
+        "run",
+        "dev:mock"
+      ],
       "port": 5173
     }
   ]
