@@ -1141,7 +1141,10 @@ mark.err.active {
   text-decoration: none;
   font-weight: 700;
   margin-left: 0.35em;
-  color: #064e3b;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: #f0fdf4;
+  color: #15803d;
 }
 
 /* Tooltip shown on hover / focus / tap of a highlight. */

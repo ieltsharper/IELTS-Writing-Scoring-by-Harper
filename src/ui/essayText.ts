@@ -172,8 +172,9 @@ export function essayText(
       }
       const covered = piece.ids.map((id) => byId.get(id)!).filter(Boolean);
       const first = covered[0];
-      const tips = covered.map(tipOf);
-      const description = describe(tips);
+      const description = describe(covered.map(tipOf));
+      // The correction already stands in the text, so the tooltip only explains the mistake.
+      const tips = covered.map((x) => (piece.struck ? { ...tipOf(x), correction: '' } : tipOf(x)));
       const mark = h(
         'mark',
         {
