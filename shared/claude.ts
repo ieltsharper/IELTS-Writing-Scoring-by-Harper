@@ -164,15 +164,18 @@ function toBand(v: unknown): number | null {
 export function repairJson(text: string): string {
   let out = '';
   let inString = false;
+  // True while inside a text that was opened with a curly quote; a curly quote closes it.
+  let curly = false;
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     if (inString) {
       if (ch === '\\') {
         out += ch + (text[i + 1] ?? '');
         i++;
-      } else if (ch === '"') {
+      } else if (ch === '"' || (curly && (ch === '“' || ch === '”'))) {
         inString = false;
-        out += ch;
+        curly = false;
+        out += '"';
       } else if (ch === '\n') out += '\\n';
       else if (ch === '\r') out += '\\r';
       else if (ch === '\t') out += '\\t';
@@ -184,6 +187,7 @@ export function repairJson(text: string): string {
     } else if (ch === '“' || ch === '”') {
       // Curly quotes outside a text are meant as the quotes around a key or value.
       inString = true;
+      curly = true;
       out += '"';
     } else {
       out += ch;
