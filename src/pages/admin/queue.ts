@@ -19,6 +19,7 @@ import {
   toast,
 } from '../../ui/components';
 import { formatDateTime, modeLabel, QUEUE_STATUS_LABELS, taskLabel } from '../../ui/format';
+import { deleteEssayButton } from './deleteEssay';
 import type { QueueItem, QueueResponse } from './types';
 
 const STATUS_KIND: Record<string, string> = {
@@ -146,6 +147,7 @@ function queueRow(item: QueueItem, reload: () => void) {
       }
     }),
   );
+  const del = deleteEssayButton(item, reload);
   return [
     item.studentName,
     [
@@ -175,7 +177,10 @@ function queueRow(item: QueueItem, reload: () => void) {
       }),
       ' ',
       retry,
+      ' ',
+      del.button,
       status,
+      del.status,
     ],
   ];
 }

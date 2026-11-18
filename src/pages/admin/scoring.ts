@@ -24,7 +24,7 @@ import { findExcerpt } from '../../../shared/excerpt';
 import { countWords } from '../../../shared/wordCount';
 import { api, ApiClientError } from '../../api';
 import { type Child, h, replace } from '../../dom';
-import { onLeave, type RouteContext, setUnsavedCheck } from '../../router';
+import { navigate, onLeave, type RouteContext, setUnsavedCheck } from '../../router';
 import {
   async,
   badge,
@@ -42,6 +42,7 @@ import {
 } from '../../ui/components';
 import { type CategoryValues, categoryFields } from '../../ui/categoryFields';
 import { copyText } from '../../ui/clipboard';
+import { deleteEssayButton } from './deleteEssay';
 import { precheckPanel } from './precheckPanel';
 import { openResultPreview, type ServerPreview } from './resultPreview';
 import { essayText, highlightLegend, selectionOffsets } from '../../ui/essayText';
@@ -1135,9 +1136,17 @@ function buildScoring(data: AdminEssayResponse, reload: () => void): Child {
   );
 
   renderAll();
+  const del = deleteEssayButton(
+    { id: essay.id, topic: essay.topic, studentName: data.student?.name ?? 'the student' },
+    () => {
+      setUnsavedCheck(null);
+      navigate('/admin');
+    },
+    'btn btn-small btn-danger',
+  );
   const pageEl = page(
     `Score: ${data.student?.name ?? 'Student'} – ${essay.topic}`,
-    h('p', null, link('/admin', '← Back to the queue')),
+    h('p', null, link('/admin', '← Back to the queue'), ' ', del.button, ' ', del.status),
     h('div', { class: 'scoring-layout' }, essayPanel, referencePanel, formPanel),
   );
   // The scoring page uses the full screen width so the three panels have room.

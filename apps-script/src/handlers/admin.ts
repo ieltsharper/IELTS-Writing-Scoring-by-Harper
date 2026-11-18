@@ -8,7 +8,7 @@ import { essayLabel } from '../category';
 import { ApiError, bool, type Ctx, type EssayRow, num, parseJson } from '../context';
 import { clearDashboardCache } from '../dashboardCache';
 import { MAX_CELL } from '../db';
-import { archiveEssay } from '../drive';
+import { archiveEssay, trashEssayFiles } from '../drive';
 import type { ActionDef } from '../router';
 import type { Row } from '../schema';
 import { Reader } from '../validate';
@@ -343,7 +343,44 @@ function toggleSample(ctx: Ctx, payload: unknown) {
   return { sample };
 }
 
+/**
+ * The teacher deletes one essay with its score, error log and Drive files, e.g. so it can be
+ * submitted again. An essay that has been rewritten is kept until its rewrite is deleted.
+ */
+function deleteEssay(ctx: Ctx, payload: unknown) {
+  const r = new Reader(payload);
+  const essayId = r.id('essayId');
+  r.done();
+  const essay = loadEssay(ctx, essayId);
+  if (ctx.db.findOne('Essays', (e) => e.parent_essay_id === essay.id)) {
+    throw new ApiError('conflict', 'This essay has a rewrite. Delete the rewrite first.');
+  }
+  trashEssayFiles(ctx, essay);
+  const { db } = ctx;
+  const mine = (x: { essay_id: string }) => x.essay_id === essay.id;
+  db.remove('Drafts', mine);
+  db.remove('SourceFeedback', mine);
+  db.remove('Scores', mine);
+  db.remove('RewriteRequests', mine);
+  db.remove('CalibrationSamples', mine);
+  db.remove('ErrorLog', mine);
+  db.remove('EmailEvents', mine);
+  if (essay.parent_essay_id) {
+    // The original is waiting for a rewrite again.
+    for (const rr of db.find('RewriteRequests', (x) => x.rewrite_essay_id === essay.id)) {
+      db.update('RewriteRequests', (x) => x.id === rr.id, {
+        status: 'requested',
+        rewrite_essay_id: '',
+      });
+    }
+  }
+  db.remove('Essays', (e) => e.id === essay.id);
+  clearDashboardCache(ctx, essay.student_id);
+  return { deleted: true };
+}
+
 export const adminActions: Record<string, ActionDef> = {
+  'admin.essays.delete': { write: true, handler: (ctx, p) => deleteEssay(ctx, p) },
   'admin.queue': { write: false, handler: (ctx, p) => queue(ctx, p) },
   'admin.essay': { write: false, handler: (ctx, p) => adminEssay(ctx, p) },
   'admin.essayImage': {
