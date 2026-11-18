@@ -134,6 +134,18 @@ function setStudentPassword(ctx: Ctx, payload: unknown, user: AuthUser) {
   return { saved: true };
 }
 
+/** The teacher removes a student's account (e.g. so the student can sign up again). */
+function deleteStudent(ctx: Ctx, payload: unknown, user: AuthUser) {
+  const r = new Reader(payload);
+  const studentId = r.id('studentId');
+  r.done();
+  const student = ctx.db.byId('Users', studentId);
+  if (!student || student.role === 'admin') throw new ApiError('not_found', 'Student not found.');
+  authorize('admin.students.delete', user, { type: 'user', userId: student.id });
+  deleteUserData(ctx, student.id);
+  return { deleted: true };
+}
+
 function updateMe(ctx: Ctx, payload: unknown, user: AuthUser) {
   authorize('me.update', user, { type: 'user', userId: user.id });
   const r = new Reader(payload);
@@ -251,6 +263,10 @@ export const accountActions: Record<string, ActionDef> = {
   'admin.students.setPassword': {
     write: true,
     handler: (ctx, p, user) => setStudentPassword(ctx, p, user!),
+  },
+  'admin.students.delete': {
+    write: true,
+    handler: (ctx, p, user) => deleteStudent(ctx, p, user!),
   },
   'me.delete': { write: true, handler: (ctx, p, user) => deleteMe(ctx, p, user!) },
 };

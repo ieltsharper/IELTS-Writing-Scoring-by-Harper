@@ -129,6 +129,31 @@ describe('passwords', () => {
     expect(JSON.stringify(app.call('me.get', {}, student))).not.toContain('v1$');
   });
 
+  it('lets only the admin delete a student, who can then sign up again with the same email', () => {
+    const app = createTestApp();
+    const admin = app.login('admin@example.com');
+    const student = app.login('demo.an@example.com');
+    const an = app.db().findOne('Users', (u) => u.email === 'demo.an@example.com')!;
+    const adminRow = app.db().findOne('Users', (u) => u.email === 'admin@example.com')!;
+    expect(() => app.call('admin.students.delete', { studentId: an.id }, student)).toThrow(
+      /forbidden/,
+    );
+    expect(() => app.call('admin.students.delete', { studentId: adminRow.id }, admin)).toThrow(
+      /not found/i,
+    );
+    app.call('admin.students.delete', { studentId: an.id }, admin);
+    expect(app.db().findOne('Users', (u) => u.email === 'demo.an@example.com')).toBeUndefined();
+    const again = app.call('auth.signup', {
+      name: 'An Again',
+      email: 'demo.an@example.com',
+      classId: app.db().all('Classes')[0]!.id,
+      password: 'brand-new-pass',
+      consent: true,
+      timezone: 'Asia/Ho_Chi_Minh',
+    }) as { user: { email: string } };
+    expect(again.user.email).toBe('demo.an@example.com');
+  });
+
   it('an empty password asks for a login link, without saying whether the email has an account', () => {
     const app = createTestApp();
     const before = app.svc.mail.outbox.length;

@@ -7,6 +7,7 @@ import {
   async,
   badge,
   busy,
+  confirmDialog,
   empty,
   errorBox,
   field,
@@ -217,9 +218,47 @@ export function studentOverviewPage(ctx: RouteContext): Node {
           : empty('No rewrite requests.'),
         h('h2', null, 'Topics covered'),
         topicHistoryView(o.topics, (id) => `/admin/score/${id}`),
+        deleteStudentForm(o.student.id, o.student.name, o.student.email),
       ),
     'Loading student…',
   );
+}
+
+/** The teacher removes a student's account and data, e.g. so the student can sign up again. */
+function deleteStudentForm(studentId: string, name: string, email: string): HTMLElement {
+  const status = h('div', { 'aria-live': 'polite' });
+  const btn = h('button', { type: 'submit', class: 'btn btn-danger' }, 'Delete this student');
+  const form = h(
+    'form',
+    { class: 'card narrow danger-zone', novalidate: true },
+    h('h2', null, 'Delete this student'),
+    h(
+      'p',
+      null,
+      `This removes ${email} and all their essays, scores, feedback and error log, and moves their essay folders to the trash. They can then sign up again with the same email. It cannot be undone.`,
+    ),
+    btn,
+    status,
+  );
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const ok = await confirmDialog({
+      title: `Delete ${name}?`,
+      message: `${email} and all their data will be removed. This cannot be undone.`,
+      confirmLabel: 'Delete student',
+      danger: true,
+    });
+    if (!ok) return;
+    await busy(btn, 'Deleting…', async () => {
+      try {
+        await api('admin.students.delete', { studentId });
+        navigate('/admin/students');
+      } catch (err) {
+        replace(status, errorBox(err));
+      }
+    });
+  });
+  return form;
 }
 
 /** The teacher sets a password for a student (e.g. one who forgot it) and tells them in class. */
