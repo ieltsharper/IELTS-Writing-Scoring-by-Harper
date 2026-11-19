@@ -1,10 +1,12 @@
 // Login with email and password, or with an emailed single-use link; 30-day sessions.
 // Only SHA-256 hashes of tokens are stored; passwords are salted and hashed many times.
 import { ApiError, appUrl, type Ctx, isAdminEmail, type UserRow } from './context';
-import { loginEmail } from './emailTemplates';
+import { loginEmail, passwordResetEmail } from './emailTemplates';
 import { type EmailJob, sendEmail } from './email';
 
 export const LOGIN_TOKEN_MINUTES = 15;
+export const RESET_TOKEN_MINUTES = 30;
+export const RESET_MESSAGE = 'If that email is registered, a password reset link is on its way.';
 export const SESSION_DAYS = 30;
 export const RATE_PER_EMAIL = 3;
 export const RATE_GLOBAL = 30;
@@ -93,6 +95,79 @@ export function requestLoginLink(ctx: Ctx, email: string): { message: string } {
     if (user) sendEmail(ctx, loginJob(ctx, user, ctx.svc.uuid()));
   }
   return { message: LOGIN_LINK_MESSAGE };
+}
+
+/**
+ * Reset tokens live in LoginTokens but are stored as sha256("reset:" + token), so a reset link
+ * can never be used as a login link and a login link can never reset a password.
+ */
+function resetTokenHash(ctx: Ctx, token: string): string {
+  return ctx.svc.sha256Hex(`reset:${token}`);
+}
+
+export function resetJob(ctx: Ctx, user: UserRow, version: string): EmailJob {
+  return {
+    type: 'password_reset',
+    refId: user.id,
+    version,
+    userId: user.id,
+    to: user.email,
+    build: () => {
+      const token = newToken(ctx);
+      ctx.db.insert('LoginTokens', {
+        token_hash: resetTokenHash(ctx, token),
+        user_id: user.id,
+        expires_at: new Date(ctx.now.getTime() + RESET_TOKEN_MINUTES * 60000).toISOString(),
+        used_at: '',
+      });
+      return passwordResetEmail(
+        user.email,
+        user.name,
+        appUrl(ctx, `/reset?token=${encodeURIComponent(token)}`),
+      );
+    },
+  };
+}
+
+/** Always resolves to the same message so it never reveals whether an email exists. */
+export function requestPasswordReset(ctx: Ctx, email: string): { message: string } {
+  const normalized = email.trim().toLowerCase();
+  const emailKey = `rl:reset:${ctx.svc.sha256Hex(normalized).slice(0, 32)}`;
+  const allowed =
+    takeRate(ctx, 'rl:reset:global', RATE_GLOBAL) && takeRate(ctx, emailKey, RATE_PER_EMAIL);
+  if (allowed) {
+    const user = ctx.db.findOne('Users', (u) => u.email.toLowerCase() === normalized);
+    if (user) sendEmail(ctx, resetJob(ctx, user, ctx.svc.uuid()));
+  }
+  return { message: RESET_MESSAGE };
+}
+
+/** Sets a new password from an emailed reset link, ends old sessions and logs the user in. */
+export function resetPasswordWithToken(
+  ctx: Ctx,
+  token: string,
+  password: string,
+): { sessionToken: string; user: AuthUser } {
+  if (!takeRate(ctx, 'rl:reset:use', RATE_LOGIN_GLOBAL)) {
+    throw new ApiError('limit', 'Too many attempts. Please wait an hour and try again.');
+  }
+  const hash = resetTokenHash(ctx, token);
+  const row = ctx.db.findOne('LoginTokens', (t) => t.token_hash === hash);
+  if (!row || row.used_at || Date.parse(row.expires_at) <= ctx.now.getTime()) {
+    throw new ApiError(
+      'unauthenticated',
+      'This password reset link is invalid or has expired. Please request a new one.',
+    );
+  }
+  const userRow = ctx.db.byId('Users', row.user_id);
+  if (!userRow) throw new ApiError('unauthenticated', 'This account no longer exists.');
+  ctx.db.update('LoginTokens', (t) => t.token_hash === hash, { used_at: ctx.nowIso });
+  ctx.db.update('Users', (u) => u.id === userRow.id, {
+    password_hash: hashPassword(ctx, password),
+  });
+  // Whoever had the old password (or a stolen session) is signed out.
+  ctx.db.remove('Sessions', (s) => s.user_id === userRow.id);
+  return createSession(ctx, ctx.db.byId('Users', userRow.id)!);
 }
 
 /** Stored as "v1$rounds$salt$hash" so the number of rounds can change later. */

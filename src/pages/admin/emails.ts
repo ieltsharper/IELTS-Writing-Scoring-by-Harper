@@ -34,6 +34,7 @@ interface EmailStatus {
 
 const TYPE_LABELS: Record<string, string> = {
   login: 'Login link',
+  password_reset: 'Password reset',
   result: 'Result',
   result_resent: 'Re-sent result',
   rewrite_reminder: 'Rewrite reminder',

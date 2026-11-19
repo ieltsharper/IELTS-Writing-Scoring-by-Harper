@@ -126,3 +126,77 @@ describe('login links and sessions', () => {
     expect(app.svc.lock.acquisitions).toBe(before + 1);
   });
 });
+
+describe('forgot password', () => {
+  const tokenOf = (mail: { text: string }) => /token=([a-f0-9]+)/.exec(mail.text)![1];
+
+  it('emails a reset link, sets the new password, ends old sessions and logs in', () => {
+    const app = createTestApp();
+    const old = app.login('demo.an@example.com');
+    app.call('me.setPassword', { newPassword: 'first password' }, old);
+
+    const res = app.call('auth.requestReset', { email: 'Demo.An@Example.com' });
+    expect(res.message).toMatch(/If that email is registered/);
+    const mail = app.svc.mail.outbox.at(-1)!;
+    expect(mail.to).toBe('demo.an@example.com');
+    expect(mail.subject).toMatch(/Reset your IELTS Harper password/);
+    expect(mail.text).toContain('/reset?token=');
+    const token = tokenOf(mail);
+
+    const { sessionToken, user } = app.call('auth.resetPassword', {
+      token,
+      password: 'brand new pass',
+    });
+    expect(user.email).toBe('demo.an@example.com');
+    expect(app.call('me.get', {}, sessionToken).hasPassword).toBe(true);
+    // Old session is gone, old password stops working, the new one works.
+    expect(() => app.call('me.get', {}, old)).toThrow(/unauthenticated/);
+    expect(() =>
+      app.call('auth.login', { email: 'demo.an@example.com', password: 'first password' }),
+    ).toThrow(/incorrect/);
+    expect(
+      app.call('auth.login', { email: 'demo.an@example.com', password: 'brand new pass' })
+        .sessionToken,
+    ).toBeTruthy();
+    // Single use.
+    expect(() => app.call('auth.resetPassword', { token, password: 'another one!!' })).toThrow(
+      /invalid or has expired/,
+    );
+  });
+
+  it('expires after 30 minutes and checks the password length', () => {
+    const app = createTestApp();
+    app.call('auth.requestReset', { email: 'demo.an@example.com' });
+    const token = tokenOf(app.svc.mail.outbox.at(-1)!);
+    expect(() => app.call('auth.resetPassword', { token, password: 'short' })).toThrow();
+    app.svc.advance(31 * 60000);
+    expect(() => app.call('auth.resetPassword', { token, password: 'long enough pw' })).toThrow(
+      /expired/,
+    );
+  });
+
+  it('reset links and login links are not interchangeable', () => {
+    const app = createTestApp();
+    app.call('auth.requestReset', { email: 'demo.an@example.com' });
+    const resetToken = tokenOf(app.svc.mail.outbox.at(-1)!);
+    expect(() => app.call('auth.exchange', { token: resetToken })).toThrow(
+      /invalid or has expired/,
+    );
+
+    app.svc.cache.clear();
+    app.call('auth.requestLink', { email: 'demo.an@example.com' });
+    const loginToken = tokenOf(app.svc.mail.outbox.at(-1)!);
+    expect(() =>
+      app.call('auth.resetPassword', { token: loginToken, password: 'long enough pw' }),
+    ).toThrow(/invalid or has expired/);
+  });
+
+  it('never reveals whether an email exists and rate limits per email', () => {
+    const app = createTestApp();
+    const res = app.call('auth.requestReset', { email: 'nobody@example.com' });
+    expect(res.message).toMatch(/If that email is registered/);
+    expect(app.svc.mail.outbox).toHaveLength(0);
+    for (let i = 0; i < 5; i++) app.call('auth.requestReset', { email: 'demo.an@example.com' });
+    expect(app.svc.mail.outbox).toHaveLength(3);
+  });
+});

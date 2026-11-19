@@ -3,13 +3,22 @@ import { api, setSessionExpiredHandler } from './api';
 import { h, replace } from './dom';
 import { addRoutes, currentPath, navigate, startRouter } from './router';
 import { clearSession, getUser } from './session';
-import { authCallbackPage, loginPage, privacyPage, signupPage } from './pages/auth';
+import {
+  authCallbackPage,
+  forgotPasswordPage,
+  loginPage,
+  privacyPage,
+  resetPasswordPage,
+  signupPage,
+} from './pages/auth';
 import { routes as studentRoutes } from './pages/student/routes';
 import { routes as adminRoutes } from './pages/admin/routes';
 
 addRoutes([
   { pattern: '/login', guard: 'guest', title: 'Log in', render: loginPage },
   { pattern: '/signup', guard: 'guest', title: 'Sign up', render: signupPage },
+  { pattern: '/forgot', guard: 'guest', title: 'Forgot password', render: forgotPasswordPage },
+  { pattern: '/reset', guard: 'public', title: 'Reset password', render: resetPasswordPage },
   { pattern: '/auth', guard: 'public', title: 'Logging in', render: authCallbackPage },
   { pattern: '/privacy', guard: 'public', title: 'Privacy notice', render: privacyPage },
   ...studentRoutes,

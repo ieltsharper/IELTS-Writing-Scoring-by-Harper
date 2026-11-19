@@ -100,50 +100,114 @@ export function loginPage(ctx: RouteContext): Node {
     });
   });
 
-  // Backup for a forgotten password: a one-time link to the same email address.
-  const linkStatus = h('div', { 'aria-live': 'polite' });
-  const linkBtn = h('button', { type: 'button', class: 'btn' }, 'Email me a login link');
-  linkBtn.addEventListener('click', () => {
-    if (!email.value.trim()) {
-      showFieldErrors(form, { email: 'Enter your email address' });
-      return;
-    }
-    showFieldErrors(form, {});
-    void busy(linkBtn, 'Sending…', async () => {
-      try {
-        const res = await api<{ message: string }>('auth.requestLink', { email: email.value });
-        replace(
-          linkStatus,
-          notice(
-            'success',
-            h('p', null, res.message),
-            h('p', null, 'If it is not in your inbox, check the Spam folder.'),
-          ),
-        );
-      } catch (err) {
-        replace(linkStatus, errorBox(err));
-      }
-    });
-  });
-  const forgot = h(
-    'details',
-    { class: 'card narrow' },
-    h('summary', null, 'Forgot your password?'),
-    h(
-      'p',
-      null,
-      'Ask your teacher to set a new one, or enter your email above and we will send you a one-time login link. You can then choose a new password in Settings.',
-    ),
-    linkBtn,
-    linkStatus,
-  );
   return centered(
     page(
       'Log in',
       expired,
       form,
-      forgot,
+      h('p', null, link('/forgot', 'Forgot your password?')),
       h('p', null, 'New here? ', link('/signup', 'Create an account'), '.'),
+    ),
+  );
+}
+
+export function forgotPasswordPage(): Node {
+  const email = h('input', { type: 'email', name: 'email', autocomplete: 'email', required: true });
+  const status = h('div', { 'aria-live': 'polite' });
+  const submit = h('button', { type: 'submit', class: 'btn btn-primary' }, 'Email me a reset link');
+  const form = h(
+    'form',
+    { class: 'card narrow', novalidate: true },
+    h(
+      'p',
+      null,
+      'Enter the email address of your account. We will send a link there to choose a new password. For security, passwords are stored scrambled, so the old one cannot be shown.',
+    ),
+    field({ label: 'Email address', control: email, name: 'email' }),
+    submit,
+    status,
+  );
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!email.value.trim()) {
+      showFieldErrors(form, { email: 'Enter your email address' });
+      return;
+    }
+    showFieldErrors(form, {});
+    void busy(submit, 'Sending…', async () => {
+      try {
+        const res = await api<{ message: string }>('auth.requestReset', { email: email.value });
+        replace(
+          status,
+          notice(
+            'success',
+            h('p', null, res.message),
+            h(
+              'p',
+              null,
+              'The link works once and expires in 30 minutes. If it is not in your inbox, check the Spam folder.',
+            ),
+          ),
+        );
+      } catch (err) {
+        replace(status, errorBox(err));
+      }
+    });
+  });
+  return centered(
+    page('Forgot your password?', form, h('p', null, link('/login', 'Back to log in'))),
+  );
+}
+
+export function resetPasswordPage(ctx: RouteContext): Node {
+  const token = ctx.query.get('token') ?? '';
+  // Keep the token out of the address bar and history.
+  history.replaceState(null, '', '#/reset');
+  const password = passwordInput('password', 'new-password');
+  const confirm = passwordInput('confirm', 'new-password');
+  const status = h('div', { 'aria-live': 'polite' });
+  const submit = h('button', { type: 'submit', class: 'btn btn-primary' }, 'Save new password');
+  const form = h(
+    'form',
+    { class: 'card narrow', novalidate: true },
+    field({
+      label: 'New password',
+      control: password,
+      name: 'password',
+      hint: 'At least 8 characters.',
+    }),
+    field({ label: 'Type it again', control: confirm, name: 'confirm' }),
+    submit,
+    status,
+  );
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const errors: Record<string, string> = {};
+    if (password.value.length < 8) errors.password = 'Use at least 8 characters';
+    if (confirm.value !== password.value) errors.confirm = 'The two passwords do not match';
+    showFieldErrors(form, errors);
+    if (Object.keys(errors).length) return;
+    void busy(submit, 'Saving…', async () => {
+      try {
+        enterSite(
+          await api<SessionResponse>('auth.resetPassword', { token, password: password.value }),
+        );
+      } catch (err) {
+        if (err instanceof ApiClientError && err.fields) showFieldErrors(form, err.fields);
+        replace(status, errorBox(err), h('p', null, link('/forgot', 'Request a new reset link')));
+      }
+    });
+  });
+  return centered(
+    page(
+      'Choose a new password',
+      token
+        ? form
+        : notice(
+            'warning',
+            'This reset link is incomplete. ',
+            link('/forgot', 'Request a new one'),
+          ),
     ),
   );
 }

@@ -63,6 +63,28 @@ export function loginEmail(to: string, name: string, url: string): MailMessage {
   });
 }
 
+export function passwordResetEmail(to: string, name: string, url: string): MailMessage {
+  return layout({
+    to,
+    subject: 'Reset your IELTS Harper password',
+    preheader: 'This link works once and expires in 30 minutes.',
+    heading: `Hi ${name}`,
+    blocks: [
+      p(
+        'We received a request to reset your password. Use the button below to choose a new one. The link works once and expires in 30 minutes.',
+      ),
+      p('If you did not ask for this, you can ignore this email: your password has not changed.'),
+    ],
+    button: { label: 'Choose a new password', url },
+    text: [
+      `Hi ${name},`,
+      '',
+      'We received a request to reset your password. Use this link to choose a new one. It works once and expires in 30 minutes.',
+      'If you did not ask for this, you can ignore this email: your password has not changed.',
+    ],
+  });
+}
+
 export interface ResultEmailData {
   to: string;
   name: string;

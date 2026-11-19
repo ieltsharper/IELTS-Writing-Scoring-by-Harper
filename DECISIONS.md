@@ -112,6 +112,11 @@ No service in the spec was replaced; everything runs on GitHub Pages, Apps Scrip
   is rebuilt from its key, and a queued login link gets a fresh token when it is finally sent.
 - **Quota**: login links need 1 send left; other emails need more than `email_quota_reserve` (default 10) left.
 - **Assignment emails** are a sixth email type (`assignment_notice`), sent only when the checkbox is ticked.
+- **Forgot password**: passwords are stored only as salted hashes, so the old one can never be emailed back. The
+  login page links to `/forgot`; the student gets a `password_reset` email (queued like login links, same quota
+  priority) with a single-use link `/reset?token=…` that expires in 30 minutes. Reset tokens are kept in LoginTokens
+  as `sha256("reset:" + token)`, so they can never act as login links (and vice versa). A reset ends all the
+  account's sessions, then logs the student in. Same neutral answer for unknown emails; 3 per email and 30 overall per hour.
 - **Drive**: images uploaded with a draft are kept in a `_uploads` subfolder and moved into the essay folder on submit.
   Images shared with another essay (assignment chart, rewrite of an original) are copied, never moved or trashed.
   Renaming after a topic change keeps the folder unique with " (2)". Folder dates use the admin time zone.

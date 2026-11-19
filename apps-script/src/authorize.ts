@@ -22,6 +22,8 @@ export const PUBLIC_ACTIONS = new Set([
   'auth.login',
   'auth.requestLink',
   'auth.exchange',
+  'auth.requestReset',
+  'auth.resetPassword',
   // Server-to-server from IELTS Harper Portal; checks its own shared secret.
   'portal.essays.import',
   'portal.signin',

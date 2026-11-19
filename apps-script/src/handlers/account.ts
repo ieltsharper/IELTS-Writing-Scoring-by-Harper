@@ -10,6 +10,8 @@ import {
   PASSWORD_MIN,
   passwordLogin,
   requestLoginLink,
+  requestPasswordReset,
+  resetPasswordWithToken,
   takeRate,
   verifyPassword,
   type AuthUser,
@@ -238,6 +240,26 @@ export const accountActions: Record<string, ActionDef> = {
       const email = r.str('email', { max: LIMITS.email });
       r.done();
       return requestLoginLink(ctx, email);
+    },
+  },
+  'auth.requestReset': {
+    write: true,
+    handler: (ctx, p) => {
+      const r = new Reader(p);
+      const email = r.str('email', { max: LIMITS.email });
+      r.done();
+      return requestPasswordReset(ctx, email);
+    },
+  },
+  'auth.resetPassword': {
+    write: true,
+    handler: (ctx, p) => {
+      const r = new Reader(p);
+      const token = r.str('token', { max: 128 });
+      const password = readNewPassword(r, 'password');
+      r.done();
+      const { sessionToken, user } = resetPasswordWithToken(ctx, token, password);
+      return { sessionToken, user: publicUser(user) };
     },
   },
   'auth.exchange': {

@@ -10,7 +10,7 @@ import {
   type TaskType,
 } from '../../shared/constants';
 import { formatForEmail, assignmentNoticeJob } from './handlers/assignments';
-import { loginJob } from './auth';
+import { loginJob, resetJob } from './auth';
 import { essayLabel } from './category';
 import { appUrl, type Ctx, type EssayRow } from './context';
 import { type EmailJob, type EmailType, parseEmailKey } from './email';
@@ -127,6 +127,10 @@ export function jobFromEvent(ctx: Ctx, event: Row<'EmailEvents'>): EmailJob | nu
     case 'login': {
       const user = ctx.db.byId('Users', refId);
       return user ? loginJob(ctx, user, version) : null;
+    }
+    case 'password_reset': {
+      const user = ctx.db.byId('Users', refId);
+      return user ? resetJob(ctx, user, version) : null;
     }
     case 'result':
     case 'result_resent': {

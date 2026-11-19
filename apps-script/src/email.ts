@@ -7,6 +7,7 @@ import type { MailMessage } from './services';
 
 export const EMAIL_TYPES = [
   'login',
+  'password_reset',
   'result',
   'result_resent',
   'rewrite_reminder',
@@ -40,10 +41,14 @@ export function parseEmailKey(key: string): { type: EmailType; refId: string; ve
   return { type: type as EmailType, refId, version: rest.join(':') };
 }
 
-/** Login links always go first; other email keeps a reserve of quota for them. */
+/** Login and reset links always go first; other email keeps a reserve of quota for them. */
+function isAccessEmail(type: string): boolean {
+  return type === 'login' || type === 'password_reset';
+}
+
 export function hasQuotaFor(ctx: Ctx, type: EmailType): boolean {
   const remaining = ctx.svc.mail.remainingQuota();
-  if (type === 'login') return remaining > 0;
+  if (isAccessEmail(type)) return remaining > 0;
   return remaining > getNumberSetting(ctx, 'email_quota_reserve');
 }
 
@@ -96,8 +101,8 @@ export function processEmailQueue(
   const queued = ctx.db
     .find('EmailEvents', (e) => e.status === 'queued')
     .sort((a, b) => {
-      const pa = a.type === 'login' ? 0 : 1;
-      const pb = b.type === 'login' ? 0 : 1;
+      const pa = isAccessEmail(a.type) ? 0 : 1;
+      const pb = isAccessEmail(b.type) ? 0 : 1;
       return pa - pb || a.created_at.localeCompare(b.created_at);
     });
   let sent = 0;
