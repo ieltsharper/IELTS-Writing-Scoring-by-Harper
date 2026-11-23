@@ -44,7 +44,14 @@ export function markdown(text: string): HTMLElement {
   // A bold label is a "lead-in" only when the paragraph STARTS with it. CSS :first-child
   // ignores text before the element, so "Bài có **BỐ CỤC**: ..." was wrongly set as a heading.
   container.querySelectorAll('p > strong:first-child').forEach((strong) => {
-    if (strong.previousSibling === null) strong.classList.add('lead-in');
+    if (strong.previousSibling !== null) return;
+    strong.classList.add('lead-in');
+    // "**Điểm mạnh**: text" -> keep the colon inside the coloured label.
+    const next = strong.nextSibling;
+    if (next && next.nodeType === Node.TEXT_NODE && next.textContent?.startsWith(':')) {
+      next.textContent = next.textContent.slice(1);
+      strong.append(':');
+    }
   });
   return container;
 }

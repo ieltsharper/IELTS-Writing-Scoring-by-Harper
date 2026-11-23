@@ -1569,12 +1569,22 @@ tbody tr:hover td {
 }
 .criterion-card .markdown p > strong.lead-in {
   display: block;
-  margin-bottom: 2px;
-  font-size: 0.8rem;
+  margin-bottom: 4px;
+  font-size: 1.05rem;
   font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
   color: var(--crit);
+}
+/* A label paragraph followed by a list: keep the list close to its label. */
+.criterion-card .markdown p:has(> strong.lead-in:only-child) {
+  margin-bottom: 4px;
+}
+.criterion-card .markdown ul,
+.criterion-card .markdown ol {
+  margin-top: 0;
+}
+/* Section labels ("Điểm mạnh", "Một số điểm cần cải thiện") that follow earlier text. */
+.criterion-card .markdown * + p:has(> strong.lead-in:only-child) {
+  margin-top: 18px;
 }
 
 .crit-badge.crit-task {

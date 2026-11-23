@@ -257,6 +257,16 @@ describe('word-level error tagging', () => {
   });
 });
 
+describe('feedback layout', () => {
+  it('asks for two bold labels on their own line and no other bold', async () => {
+    const { claudeProjectInstructions } = await import('../../shared/claude');
+    const text = claudeProjectInstructions();
+    expect(text).toContain('**Điểm mạnh:**');
+    expect(text).toContain('**Một số điểm cần cải thiện:**');
+    expect(text).toMatch(/never start a sentence and put a bold label in the middle/);
+  });
+});
+
 describe('Vietnamese comments, English excerpts', () => {
   it('tells Claude to write comments in Vietnamese and keep excerpts and corrections in English', async () => {
     const { claudeProjectInstructions } = await import('../../shared/claude');
