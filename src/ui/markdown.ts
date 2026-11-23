@@ -41,6 +41,11 @@ export function markdown(text: string): HTMLElement {
     a.setAttribute('rel', 'noopener noreferrer nofollow');
     a.setAttribute('target', '_blank');
   });
+  // A bold label is a "lead-in" only when the paragraph STARTS with it. CSS :first-child
+  // ignores text before the element, so "Bài có **BỐ CỤC**: ..." was wrongly set as a heading.
+  container.querySelectorAll('p > strong:first-child').forEach((strong) => {
+    if (strong.previousSibling === null) strong.classList.add('lead-in');
+  });
   return container;
 }
 

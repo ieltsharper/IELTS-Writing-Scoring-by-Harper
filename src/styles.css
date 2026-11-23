@@ -1567,7 +1567,7 @@ tbody tr:hover td {
 .criterion-card .markdown p:last-child {
   margin-bottom: 0;
 }
-.criterion-card .markdown p > strong:first-child {
+.criterion-card .markdown p > strong.lead-in {
   display: block;
   margin-bottom: 2px;
   font-size: 0.8rem;
