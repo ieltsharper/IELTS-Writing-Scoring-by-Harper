@@ -215,23 +215,34 @@ export function rewriteReminderBatchEmail(d: {
   };
 }
 
-export function assignmentEmail(d: {
-  to: string;
-  name: string;
+interface AssignmentEmailData {
   title: string;
   taskTypeLabel: string;
   minutes: number;
   closes: string;
   url: string;
-}): MailMessage {
+}
+
+function assignmentLayout(d: AssignmentEmailData, to: string, greeting: string): MailMessage {
   const line = `${d.title} (${d.taskTypeLabel}, ${d.minutes} minutes) is open until ${d.closes}. The prompt appears when you press "Start test", and the timer starts straight away.`;
   return layout({
-    to: d.to,
+    to,
     subject: `New writing test: ${d.title}`,
     preheader: line,
     heading: 'You have a new writing test',
-    blocks: [p(`Hi ${d.name},`), p(line)],
+    blocks: [p(greeting), p(line)],
     button: { label: 'Go to Assigned to me', url: d.url },
-    text: [`Hi ${d.name},`, '', line],
+    text: [greeting, '', line],
   });
+}
+
+export function assignmentEmail(
+  d: AssignmentEmailData & { to: string; name: string },
+): MailMessage {
+  return assignmentLayout(d, d.to, `Hi ${d.name},`);
+}
+
+/** The same notice for many students (same test, same time zone), everyone in BCC. */
+export function assignmentBatchEmail(d: AssignmentEmailData & { bcc: string[] }): MailMessage {
+  return { ...assignmentLayout(d, '', 'Hi,'), bcc: d.bcc };
 }

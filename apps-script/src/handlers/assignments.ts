@@ -12,8 +12,8 @@ import { authorize } from '../authorize';
 import { categoryColumns, readCategory } from '../category';
 import { ApiError, appUrl, bool, type Ctx, type EssayRow, num, parseJson } from '../context';
 import { saveUploadedImage } from '../drive';
-import { sendEmail } from '../email';
-import { assignmentEmail } from '../emailTemplates';
+import { type EmailJob, sendEmailBatch } from '../email';
+import { assignmentBatchEmail, assignmentEmail } from '../emailTemplates';
 import type { ActionDef } from '../router';
 import type { Row } from '../schema';
 import { Reader } from '../validate';
@@ -195,17 +195,24 @@ function create(ctx: Ctx, payload: unknown) {
     email_students: emailStudents,
     created_at: ctx.nowIso,
   });
-  const outcomes: Record<string, number> = {};
-  if (emailStudents) {
-    for (const s of assignedStudents(ctx, a)) {
-      const outcome = sendEmail(ctx, assignmentNoticeJob(ctx, a, s));
-      outcomes[outcome] = (outcomes[outcome] ?? 0) + 1;
-    }
-  }
+  // One BCC message for the whole group, not one email per student.
+  const outcomes: Record<string, number> = emailStudents
+    ? sendEmailBatch(
+        ctx,
+        assignedStudents(ctx, a).map((s) => assignmentNoticeJob(ctx, a, s)),
+      )
+    : {};
   return { id: a.id, emails: outcomes };
 }
 
-export function assignmentNoticeJob(ctx: Ctx, a: AssignmentRow, student: Row<'Users'>) {
+export function assignmentNoticeJob(ctx: Ctx, a: AssignmentRow, student: Row<'Users'>): EmailJob {
+  const data = (timeZone: string) => ({
+    title: a.title,
+    taskTypeLabel: TASK_TYPE_LABELS[a.task_type as TaskType],
+    minutes: num(a.time_limit_minutes) ?? TIME_LIMITS[a.task_type as TaskType],
+    closes: formatForEmail(ctx, a.closes_at, timeZone),
+    url: appUrl(ctx, '/assigned'),
+  });
   return {
     type: 'assignment_notice' as const,
     refId: a.id,
@@ -213,15 +220,10 @@ export function assignmentNoticeJob(ctx: Ctx, a: AssignmentRow, student: Row<'Us
     userId: student.id,
     to: student.email,
     build: () =>
-      assignmentEmail({
-        to: student.email,
-        name: student.name,
-        title: a.title,
-        taskTypeLabel: TASK_TYPE_LABELS[a.task_type as TaskType],
-        minutes: num(a.time_limit_minutes) ?? TIME_LIMITS[a.task_type as TaskType],
-        closes: formatForEmail(ctx, a.closes_at, student.timezone),
-        url: appUrl(ctx, '/assigned'),
-      }),
+      assignmentEmail({ to: student.email, name: student.name, ...data(student.timezone) }),
+    // Students of the same test and time zone share one message (the close time is shown in it).
+    batchGroup: `${a.id}|${student.timezone}`,
+    batch: (bcc) => assignmentBatchEmail({ bcc, ...data(student.timezone) }),
   };
 }
 

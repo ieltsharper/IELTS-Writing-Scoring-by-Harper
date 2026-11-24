@@ -35,6 +35,11 @@ export interface EmailJob {
    * the given addresses in BCC. Such jobs are sent together by sendEmailBatch.
    */
   batch?: (bcc: string[]) => MailMessage;
+  /**
+   * Jobs share a message only when type and batchGroup match, so a group must have
+   * identical content (e.g. the same test and time zone). Defaults to the type alone.
+   */
+  batchGroup?: string;
 }
 
 /** Most distinct students in one BCC message. */
@@ -49,8 +54,12 @@ export function parseEmailKey(key: string): { type: EmailType; refId: string; ve
   return { type: type as EmailType, refId, version: rest.join(':') };
 }
 
-/** Reminder types, sent as BCC batches. */
-const BATCH_TYPES: ReadonlySet<string> = new Set(['rewrite_reminder', 'rewrite_overdue']);
+/** Types sent as BCC batches. */
+const BATCH_TYPES: ReadonlySet<string> = new Set([
+  'rewrite_reminder',
+  'rewrite_overdue',
+  'assignment_notice',
+]);
 
 /** Login and reset links always go first; other email keeps a reserve of quota for them. */
 function isAccessEmail(type: string): boolean {
@@ -109,17 +118,20 @@ interface BatchResult {
 }
 
 /**
- * Send jobs that have a `batch` builder as BCC messages: one per type and per
- * MAX_BCC students, as many as the quota allows. Gmail counts every BCC
+ * Send jobs that have a `batch` builder as BCC messages: one per type and batch
+ * group, and per MAX_BCC students, as many as the quota allows. Gmail counts every BCC
  * recipient plus the teacher's own To copy against the daily quota. Jobs that
  * do not fit come back 'unsent' for the caller to queue.
  */
 function deliverBatch(ctx: Ctx, jobs: EmailJob[]): BatchResult[] {
   const results: BatchResult[] = jobs.map((job) => ({ job, status: 'unsent', error: '' }));
-  const byType = new Map<string, BatchResult[]>();
-  for (const r of results) byType.set(r.job.type, [...(byType.get(r.job.type) ?? []), r]);
+  const groups = new Map<string, BatchResult[]>();
+  for (const r of results) {
+    const key = `${r.job.type}|${r.job.batchGroup ?? ''}`;
+    groups.set(key, [...(groups.get(key) ?? []), r]);
+  }
   const reserve = getNumberSetting(ctx, 'email_quota_reserve');
-  for (const group of byType.values()) {
+  for (const group of groups.values()) {
     let pos = 0;
     while (pos < group.length) {
       const room = ctx.svc.mail.remainingQuota() - reserve - 1; // 1 = the To copy

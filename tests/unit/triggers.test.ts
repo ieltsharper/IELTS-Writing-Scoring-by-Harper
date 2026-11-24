@@ -161,6 +161,62 @@ describe('hourly job', () => {
   });
 });
 
+describe('assignment notice emails in batches', () => {
+  const notices = (app: ReturnType<typeof createTestApp>) =>
+    app.svc.mail.outbox.filter((m) => m.subject.startsWith('New writing test'));
+
+  function assignToBoth(app: ReturnType<typeof createTestApp>) {
+    const admin = app.login('admin@example.com');
+    const now = app.svc.now();
+    const students = app
+      .db()
+      .find(
+        'Users',
+        (u) => u.email === 'demo.an@example.com' || u.email === 'demo.binh@example.com',
+      )
+      .map((u) => u.id);
+    return app.call(
+      'admin.assignments.create',
+      {
+        title: 'Week 5 test',
+        taskType: 'task2',
+        topicId: app.call('config.get').topics[0].id,
+        essayType: 'discussion',
+        prompt: 'A prompt about technology.',
+        classIds: [],
+        studentIds: students,
+        opensAt: now.toISOString(),
+        closesAt: new Date(now.getTime() + 86400000).toISOString(),
+        emailStudents: true,
+      },
+      admin,
+    );
+  }
+
+  it('sends one BCC message to all students of the test', () => {
+    const app = createTestApp();
+    const created = assignToBoth(app);
+    expect(created.emails).toEqual({ sent: 2 });
+    expect(notices(app)).toHaveLength(1);
+    const mail = notices(app)[0];
+    expect(mail.to).toBe('');
+    expect(mail.bcc!.sort()).toEqual(['demo.an@example.com', 'demo.binh@example.com']);
+    expect(mail.subject).toBe('New writing test: Week 5 test');
+    expect(app.db().find('EmailEvents', (e) => e.type === 'assignment_notice')).toHaveLength(2);
+  });
+
+  it('sends a separate message per time zone so the close time is right', () => {
+    const app = createTestApp();
+    app.db().update('Users', (u) => u.email === 'demo.binh@example.com', {
+      timezone: 'America/New_York',
+    });
+    assignToBoth(app);
+    expect(notices(app)).toHaveLength(2);
+    expect(notices(app).map((m) => m.bcc!.length)).toEqual([1, 1]);
+    expect(notices(app)[0].text).not.toEqual(notices(app)[1].text);
+  });
+});
+
 describe('assigned tests', () => {
   it('hides the prompt until start, allows one attempt and marks missed after close', () => {
     const app = createTestApp();
