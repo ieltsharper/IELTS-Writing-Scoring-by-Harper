@@ -54,10 +54,18 @@ export interface DriveService {
 }
 
 export interface MailMessage {
+  /** Empty for a BCC batch: Gmail then addresses it to the teacher's own account. */
   to: string;
+  /** Hidden recipients of one batch message (students never see each other's address). */
+  bcc?: string[];
   subject: string;
   text: string;
   html: string;
+}
+
+/** Recipients Gmail counts against the daily quota (To, or the teacher's copy, plus every BCC). */
+export function recipientCount(message: MailMessage): number {
+  return 1 + (message.bcc?.length ?? 0);
 }
 
 export interface MailService {

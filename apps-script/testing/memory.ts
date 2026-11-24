@@ -15,6 +15,7 @@ import type {
   SpreadsheetLike,
   StoredFile,
 } from '../src/services';
+import { recipientCount } from '../src/services';
 
 interface Cell {
   value: unknown;
@@ -256,8 +257,11 @@ export class MemoryMail implements MailService {
       this.failNext--;
       throw new Error('Gmail send failed');
     }
-    if (this.quota <= 0) throw new Error('Service invoked too many times for one day: email.');
-    this.quota--;
+    const recipients = recipientCount(message);
+    if (this.quota < recipients) {
+      throw new Error('Service invoked too many times for one day: email.');
+    }
+    this.quota -= recipients;
     this.outbox.push(message);
   }
 }

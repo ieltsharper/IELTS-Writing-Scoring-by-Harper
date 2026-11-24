@@ -14,7 +14,13 @@ import { type Category, categoryColumns } from '../category';
 import { clearDashboardCache } from '../dashboardCache';
 import { MAX_CELL } from '../db';
 import { renameEssayFolder } from '../drive';
-import { processEmailQueue, type SendOutcome, sendEmail } from '../email';
+import {
+  type EmailJob,
+  processEmailQueue,
+  type SendOutcome,
+  sendEmail,
+  sendEmailBatch,
+} from '../email';
 import { groupTopErrors, jobFromEvent, resultJob, resultMessage } from '../emailJobs';
 import type { ActionDef } from '../router';
 import type { Row } from '../schema';
@@ -408,11 +414,15 @@ function failedEvents(ctx: Ctx, filter: (e: Row<'EmailEvents'>) => boolean) {
 
 function retryEvents(ctx: Ctx, events: Row<'EmailEvents'>[]) {
   const outcomes: Record<string, number> = {};
+  const count = (outcome: string, n = 1) => (outcomes[outcome] = (outcomes[outcome] ?? 0) + n);
+  const batched: EmailJob[] = [];
   for (const event of events) {
     const job = jobFromEvent(ctx, event);
-    const outcome = job ? sendEmail(ctx, job) : 'skipped';
-    outcomes[outcome] = (outcomes[outcome] ?? 0) + 1;
+    if (job?.batch)
+      batched.push(job); // reminders go together in one BCC message
+    else count(job ? sendEmail(ctx, job) : 'skipped');
   }
+  for (const [outcome, n] of Object.entries(sendEmailBatch(ctx, batched))) count(outcome, n);
   return { outcomes };
 }
 

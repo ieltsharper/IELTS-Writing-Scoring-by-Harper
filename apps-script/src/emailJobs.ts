@@ -14,7 +14,7 @@ import { loginJob, resetJob } from './auth';
 import { essayLabel } from './category';
 import { appUrl, type Ctx, type EssayRow } from './context';
 import { type EmailJob, type EmailType, parseEmailKey } from './email';
-import { resultEmail, rewriteReminderEmail } from './emailTemplates';
+import { resultEmail, rewriteReminderBatchEmail, rewriteReminderEmail } from './emailTemplates';
 import type { Row } from './schema';
 import { errorsView, rewriteRequestFor, scoreView } from './views';
 
@@ -116,6 +116,13 @@ export function rewriteJob(
         due: formatForEmail(ctx, rr.due_at, student.timezone),
         overdue: type === 'rewrite_overdue',
         url: appUrl(ctx, `/essays/${essay.id}`),
+      }),
+    // Reminders go out together, one BCC message per type (see sendEmailBatch).
+    batch: (bcc) =>
+      rewriteReminderBatchEmail({
+        bcc,
+        overdue: type === 'rewrite_overdue',
+        url: appUrl(ctx, '/dashboard'),
       }),
   };
 }

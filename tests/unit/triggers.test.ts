@@ -15,7 +15,7 @@ describe('daily job: rewrite reminders and overdue status', () => {
     expect(runDailyJob(app.svc).reminders).toBe(0); // at most once
     const reminder = app.svc.mail.outbox.filter((m) => m.subject.startsWith('Reminder'));
     expect(reminder).toHaveLength(1);
-    expect(reminder[0].to).toBe('demo.an@example.com');
+    expect(reminder[0].bcc).toEqual(['demo.an@example.com']);
 
     app.svc.advance(2 * 86400000); // past the due date
     expect(runDailyJob(app.svc).overdue).toBe(1);
@@ -36,6 +36,73 @@ describe('daily job: rewrite reminders and overdue status', () => {
     );
     app.call('essays.submit', { id: d.id, body: 'A late rewrite of my essay.' }, student);
     expect(app.db().byId('RewriteRequests', rr.id)!.status).toBe('submitted');
+  });
+});
+
+describe('reminder emails in batches', () => {
+  /** Give `count` extra students a scored essay with a rewrite request due in 5 days. */
+  function addRewrites(app: ReturnType<typeof createTestApp>, count: number) {
+    const db = app.db();
+    const rr = db.all('RewriteRequests')[0];
+    const essay = db.byId('Essays', rr.essay_id)!;
+    const student = db.byId('Users', essay.student_id)!;
+    for (let i = 0; i < count; i++) {
+      const id = app.svc.uuid();
+      db.insert('Users', { ...student, id, email: `extra${i}@example.com`, name: `Extra ${i}` });
+      const essayId = app.svc.uuid();
+      db.insert('Essays', { ...essay, id: essayId, student_id: id });
+      db.insert('RewriteRequests', { ...rr, id: app.svc.uuid(), essay_id: essayId });
+    }
+  }
+
+  it('sends one BCC message to every student who needs a reminder', () => {
+    const app = createTestApp();
+    addRewrites(app, 2);
+    app.svc.advance(4 * 86400000);
+    expect(runDailyJob(app.svc).reminders).toBe(3);
+
+    expect(app.svc.mail.outbox).toHaveLength(1);
+    const mail = app.svc.mail.outbox[0];
+    expect(mail.to).toBe(''); // sent to the teacher's own address by Gmail
+    expect(mail.bcc!.sort()).toEqual([
+      'demo.an@example.com',
+      'extra0@example.com',
+      'extra1@example.com',
+    ]);
+    // No student's address or name appears in the visible message.
+    expect(mail.text + mail.html).not.toMatch(/extra0|demo\.an|Extra 0/);
+    // Each student still has their own record, so nobody is reminded twice.
+    expect(app.db().find('EmailEvents', (e) => e.type === 'rewrite_reminder')).toHaveLength(3);
+    expect(runDailyJob(app.svc).reminders).toBe(0);
+    expect(app.svc.mail.outbox).toHaveLength(1);
+  });
+
+  it('splits a large group into messages of at most 50 students', () => {
+    const app = createTestApp();
+    addRewrites(app, 59); // 60 students in total
+    app.svc.mail.quota = 1000;
+    app.svc.advance(4 * 86400000);
+    runDailyJob(app.svc);
+    expect(app.svc.mail.outbox.map((m) => m.bcc!.length)).toEqual([50, 10]);
+  });
+
+  it('counts every recipient against the quota and queues what does not fit', () => {
+    const app = createTestApp();
+    addRewrites(app, 4); // 5 students
+    app.svc.mail.quota = 10 + 1 + 3; // reserve 10, the To copy, 3 students
+    app.svc.advance(4 * 86400000);
+    runDailyJob(app.svc);
+    expect(app.svc.mail.outbox).toHaveLength(1);
+    expect(app.svc.mail.outbox[0].bcc).toHaveLength(3);
+    expect(app.db().find('EmailEvents', (e) => e.status === 'queued')).toHaveLength(2);
+
+    // When quota returns, the hourly job sends the rest as one more batch.
+    app.svc.mail.quota = 100;
+    expect(runHourlyJob(app.svc)).toMatchObject({ emailsSent: 2, emailsQueued: 0 });
+    expect(app.svc.mail.outbox).toHaveLength(2);
+    expect(app.svc.mail.outbox[1].bcc).toHaveLength(2);
+    const sentTo = app.svc.mail.outbox.flatMap((m) => m.bcc!);
+    expect(new Set(sentTo).size).toBe(5);
   });
 });
 

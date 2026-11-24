@@ -3,7 +3,7 @@
 // - hourly: send queued emails when Gmail quota returns; auto-submit abandoned timed tests
 import { createCtx, type Ctx } from './context';
 import { clearDashboardCache } from './dashboardCache';
-import { processEmailQueue, sendEmail } from './email';
+import { type EmailJob, processEmailQueue, sendEmailBatch } from './email';
 import { jobFromEvent, rewriteJob } from './emailJobs';
 import { finalizeSubmission } from './handlers/essays';
 import type { Services } from './services';
@@ -24,8 +24,10 @@ function withLock<T>(svc: Services, fn: (ctx: Ctx) => T): T {
 
 export function rewriteDeadlines(ctx: Ctx) {
   const nowMs = ctx.now.getTime();
-  let reminders = 0;
   let overdue = 0;
+  // Collected first, then sent as BCC batches: one email per type, not one per student.
+  const reminderJobs: EmailJob[] = [];
+  const overdueJobs: EmailJob[] = [];
   for (const rr of ctx.db.find(
     'RewriteRequests',
     (r) => r.status === 'requested' || r.status === 'overdue',
@@ -41,12 +43,14 @@ export function rewriteDeadlines(ctx: Ctx) {
         overdue++;
       }
       // Sent at most once: the idempotency key is rewrite_overdue:<request>:1.
-      sendEmail(ctx, rewriteJob(ctx, { ...rr, status: 'overdue' }, 'rewrite_overdue'));
+      overdueJobs.push(rewriteJob(ctx, { ...rr, status: 'overdue' }, 'rewrite_overdue'));
     } else if (due - nowMs <= REMINDER_DAYS * 86400000) {
-      if (sendEmail(ctx, rewriteJob(ctx, rr, 'rewrite_reminder')) !== 'duplicate') reminders++;
+      reminderJobs.push(rewriteJob(ctx, rr, 'rewrite_reminder'));
     }
   }
-  return { reminders, overdue };
+  const reminderOutcomes = sendEmailBatch(ctx, reminderJobs);
+  sendEmailBatch(ctx, overdueJobs);
+  return { reminders: reminderJobs.length - (reminderOutcomes.duplicate ?? 0), overdue };
 }
 
 /** Submit timed tests whose deadline (plus grace) passed while the student was away. */

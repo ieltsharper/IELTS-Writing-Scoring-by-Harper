@@ -187,6 +187,34 @@ export function rewriteReminderEmail(d: {
   });
 }
 
+/**
+ * One reminder for many students, sent with everyone in BCC. It cannot name the
+ * essay or the deadline (those differ per student), so it points to the dashboard.
+ */
+export function rewriteReminderBatchEmail(d: {
+  bcc: string[];
+  overdue: boolean;
+  url: string;
+}): MailMessage {
+  const subject = d.overdue ? 'Your rewrite is overdue' : 'Reminder: your rewrite is due soon';
+  const line = d.overdue
+    ? 'You have a rewrite that is past its deadline. You can still submit it; it will be marked late.'
+    : 'You have a rewrite that is due within the next 2 days.';
+  const where = 'Open your dashboard to see which essay it is and the exact deadline.';
+  return {
+    ...layout({
+      to: '',
+      subject,
+      preheader: line,
+      heading: subject,
+      blocks: [p('Hi,'), p(line), p(where)],
+      button: { label: 'Open my dashboard', url: d.url },
+      text: ['Hi,', '', line, where],
+    }),
+    bcc: d.bcc,
+  };
+}
+
 export function assignmentEmail(d: {
   to: string;
   name: string;
