@@ -1,7 +1,10 @@
 // Email content: table-based HTML that renders in Gmail and Outlook, plus a
 // plain-text version. All dynamic text goes through escapeHtml.
 import { formatBand } from '../../shared/band';
+import { CRITERIA, CRITERION_SHORT, type Criterion } from '../../shared/constants';
+import { markdownToEmailHtml, markdownToPlainText } from '../../shared/emailMarkdown';
 import { escapeHtml as e } from '../../shared/escape';
+import { inlineLayout } from '../../shared/inlineLayout';
 import type { MailMessage } from './services';
 
 interface Layout {
@@ -85,6 +88,36 @@ export function passwordResetEmail(to: string, name: string, url: string): MailM
   });
 }
 
+/** Colours per criterion, matching the website (essay highlights and feedback cards). */
+const CRIT_COLOURS: Record<
+  Criterion,
+  { accent: string; soft: string; mark: string; line: string }
+> = {
+  task: { accent: '#b91c1c', soft: '#fef2f2', mark: '#fecaca', line: '#dc2626' },
+  coherence: { accent: '#c2410c', soft: '#fff7ed', mark: '#fed7aa', line: '#ea580c' },
+  lexical: { accent: '#1d4ed8', soft: '#eff6ff', mark: '#bfdbfe', line: '#2563eb' },
+  grammar: { accent: '#7e22ce', soft: '#faf5ff', mark: '#e9d5ff', line: '#9333ea' },
+};
+const NEUTRAL = { accent: '#374151', soft: '#f3f4f6', mark: '#e5e7eb', line: '#9ca3af' };
+
+export interface EmailCriterionText {
+  key: Criterion;
+  label: string;
+  /** Markdown. */
+  text: string;
+}
+
+export interface EmailError {
+  id: string;
+  category: string;
+  criterion: Criterion | null;
+  excerpt: string;
+  start: number | null;
+  end: number | null;
+  correction: string;
+  note: string;
+}
+
 export interface ResultEmailData {
   to: string;
   name: string;
@@ -93,74 +126,238 @@ export interface ResultEmailData {
   modeLabel: string;
   overall: number;
   criteria: Array<{ label: string; score: number }>;
-  summary: string;
-  topErrors: Array<{ category: string; excerpt: string; correction: string }>;
+  /** Markdown. */
+  generalComment: string;
+  feedback: EmailCriterionText[];
+  /** The student's essay as submitted. */
+  body: string;
+  /** All tagged errors (placed ones are marked in the essay). */
+  errors: EmailError[];
   rewriteDue: string | null;
   url: string;
   resent: boolean;
-  /** Band of the sample essay the teacher added, if any. */
-  sampleBand?: number | null;
+  /** The teacher's sample essay, if any, with why it scores higher per criterion. */
+  sample?: { text: string; band: number; analysis: EmailCriterionText[] } | null;
+  /**
+   * Gmail cuts messages over about 100 KB. When the full email would be that long, the sample
+   * essay and the list of errors are left out and the student is pointed to the website.
+   */
+  compact?: boolean;
 }
 
+/** Past this many characters the full email is replaced by the compact one. */
+const MAX_HTML_LENGTH = 90_000;
+
+const h2 = (text: string) =>
+  `<h2 style="font-size:19px;line-height:1.3;margin:28px 0 10px;padding-top:14px;border-top:2px solid #e5e7eb;color:#111827">${e(text)}</h2>`;
+
+/** Text with line breaks, for an essay (paragraphs are separated by blank lines). */
+function essayHtml(text: string): string {
+  return e(text).replace(/\r\n?|\n/g, '<br>');
+}
+
+function card(title: string, crit: Criterion | null, markdown: string): string {
+  const c = crit ? CRIT_COLOURS[crit] : NEUTRAL;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 14px;border-collapse:collapse"><tr>
+<td width="5" bgcolor="${c.line}" style="width:5px;font-size:0;line-height:0">&nbsp;</td>
+<td style="padding:14px 16px;background:${c.soft};font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.55;color:#111827">
+${title ? `<p style="margin:0 0 10px;padding-bottom:8px;border-bottom:2px solid #ffffff;font-size:19px;font-weight:bold;line-height:1.25;color:${c.accent}">${e(title)}</p>` : ''}
+${markdownToEmailHtml(markdown, { accent: c.accent })}
+</td></tr></table>`;
+}
+
+/** The criterion cards that have text. */
+function cards(items: EmailCriterionText[]): string {
+  return items
+    .filter((x) => x.text.trim())
+    .map((x) => card(x.label, x.key, x.text))
+    .join('\n');
+}
+
+const legend = () =>
+  `<p style="margin:0 0 10px;font-size:14px;color:#4b5563">Highlight colours: ${CRITERIA.map(
+    (c) =>
+      `<span style="background:${CRIT_COLOURS[c].mark};border-bottom:2px solid ${CRIT_COLOURS[c].line};padding:1px 6px;margin-right:4px;font-size:13px;color:#111827">${e(CRITERION_SHORT[c])}</span>`,
+  ).join(' ')}</p>`;
+
+/** The pieces of the corrected essay: struck-through wrong words, then the correction. */
+function correctedPieces(body: string, errors: EmailError[]) {
+  const byId = new Map(errors.map((x) => [x.id, x]));
+  return inlineLayout(body, errors).map((piece) => ({
+    piece,
+    error: piece.kind === 'error' ? byId.get(piece.id) : undefined,
+  }));
+}
+
+function correctedEssayHtml(body: string, errors: EmailError[]): string {
+  const html = correctedPieces(body, errors)
+    .map(({ piece, error }) => {
+      if (piece.kind === 'text') return essayHtml(piece.text);
+      const c = error?.criterion ? CRIT_COLOURS[error.criterion] : NEUTRAL;
+      const mark = `background:${c.mark};border-bottom:2px solid ${c.line};padding:0 2px`;
+      if (!piece.struck) return `<span style="${mark}">${essayHtml(piece.original)}</span>`;
+      const fix = piece.replacement
+        ? `<span style="background:#f0fdf4;color:#15803d;font-weight:bold;padding:0 3px"> ${e(piece.replacement)}</span>`
+        : '';
+      return `<span style="${mark}"><span style="text-decoration:line-through;color:#4b5563">${essayHtml(piece.original)}</span></span>${fix}`;
+    })
+    .join('');
+  return `<div style="margin:0 0 14px;padding:14px 16px;background:#ffffff;border:1px solid #e5e7eb;font-family:Georgia,'Times New Roman',serif;font-size:16px;line-height:1.7;color:#111827">${html}</div>`;
+}
+
+function correctedEssayText(body: string, errors: EmailError[]): string {
+  return correctedPieces(body, errors)
+    .map(({ piece }) => {
+      if (piece.kind === 'text') return piece.text;
+      return piece.struck
+        ? `[${piece.original} -> ${piece.replacement || '(delete)'}]`
+        : `[${piece.original}]`;
+    })
+    .join('');
+}
+
+function errorListHtml(errors: EmailError[]): string {
+  if (!errors.length) return '<p style="margin:0 0 12px">No errors were tagged in this essay.</p>';
+  const items = errors
+    .map((x) => {
+      const c = x.criterion ? CRIT_COLOURS[x.criterion] : NEUTRAL;
+      const badge = x.criterion
+        ? ` <span style="background:${c.mark};color:${c.accent};padding:1px 6px;font-size:12px;font-weight:bold">${e(CRITERION_SHORT[x.criterion])}</span>`
+        : '';
+      const fix = x.correction
+        ? ` → <span style="color:#15803d;font-weight:bold">${e(x.correction)}</span>`
+        : '';
+      const note = x.note
+        ? `<br><span style="font-size:14px;color:#4b5563">${e(x.note)}</span>`
+        : '';
+      return `<li style="margin-bottom:10px"><strong>${e(x.category)}</strong>${badge}<br>“${e(x.excerpt)}”${fix}${note}</li>`;
+    })
+    .join('');
+  return `<ol style="margin:0 0 12px;padding-left:22px">${items}</ol>`;
+}
+
+function errorListText(errors: EmailError[]): string[] {
+  return errors.flatMap((x, i) => [
+    `${i + 1}. ${x.category}: "${x.excerpt}"${x.correction ? ` -> ${x.correction}` : ''}`,
+    ...(x.note ? [`   ${x.note}`] : []),
+  ]);
+}
+
+/** Section text with its Markdown removed. */
+const criterionText = (items: EmailCriterionText[]): string[] =>
+  items
+    .filter((x) => x.text.trim())
+    .flatMap((x) => ['', x.label.toUpperCase(), markdownToPlainText(x.text)]);
+
 export function resultEmail(d: ResultEmailData): MailMessage {
+  const full = buildResultEmail(d, false);
+  return !d.compact && full.html.length > MAX_HTML_LENGTH ? buildResultEmail(d, true) : full;
+}
+
+function buildResultEmail(d: ResultEmailData, compact: boolean): MailMessage {
   const rows = d.criteria
     .map(
       (c) =>
         `<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb">${e(c.label)}</td><td align="right" style="padding:6px 8px;border-bottom:1px solid #e5e7eb;font-weight:bold">${e(formatBand(c.score))}</td></tr>`,
     )
     .join('');
-  const errors = d.topErrors.length
-    ? `<h2 style="font-size:18px;margin:20px 0 8px">Top errors to fix</h2><ol style="margin:0 0 12px;padding-left:20px">${d.topErrors
-        .map(
-          (x) =>
-            `<li style="margin-bottom:8px"><strong>${e(x.category)}</strong><br>“${e(x.excerpt)}” → <span style="color:#065f46">${e(x.correction)}</span></li>`,
-        )
-        .join('')}</ol>`
-    : '';
   const rewrite = d.rewriteDue
     ? `<p style="margin:12px 0;padding:12px;background:#fef3c7;color:#78350f">Rewrite required by <strong>${e(d.rewriteDue)}</strong>.</p>`
     : '';
-  const hasSample = d.sampleBand !== null && d.sampleBand !== undefined;
-  const sampleLine = hasSample
-    ? `Your teacher also wrote a sample essay (Band ${formatBand(d.sampleBand!)}) and explained why it scores higher. Compare it with your essay on the website.`
-    : '';
+  const sample = !compact && d.sample?.text.trim() ? d.sample : null;
+  const placed = [...d.errors].sort((a, b) => (a.start ?? Infinity) - (b.start ?? Infinity));
+  const feedbackBlocks = [
+    d.generalComment.trim() ? card('', null, d.generalComment) : '',
+    cards(d.feedback),
+  ].filter(Boolean);
+  const blocks = [
+    p(`Hi ${d.name},`),
+    p(`${d.taskTypeLabel} · ${d.topic} · ${d.modeLabel}`),
+    `<p style="margin:0 0 12px;font-size:28px;font-weight:bold;color:#c2410c">Overall band ${e(formatBand(d.overall))}</p>`,
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:0 0 12px">${rows}</table>`,
+    rewrite,
+    feedbackBlocks.length ? h2('Feedback') : '',
+    ...feedbackBlocks,
+    d.body.trim()
+      ? [
+          h2('Your essay'),
+          p(
+            'Struck-through words are wrong; the correction follows them in green. Each mark is explained in the list of errors below.',
+          ),
+          legend(),
+          correctedEssayHtml(d.body, placed),
+        ].join('\n')
+      : '',
+    compact ? '' : [h2(`Errors (${placed.length})`), errorListHtml(placed)].join('\n'),
+    sample
+      ? [
+          h2(`Sample essay · Band ${formatBand(sample.band)}`),
+          p(
+            'Your teacher wrote this sample to show how your essay could be improved. Compare it with your own essay.',
+          ),
+          `<div style="margin:0 0 14px;padding:14px 16px;background:#f9fafb;border:1px solid #e5e7eb;font-family:Georgia,'Times New Roman',serif;font-size:16px;line-height:1.7;color:#111827">${essayHtml(sample.text)}</div>`,
+          sample.analysis.some((x) => x.text.trim())
+            ? `<h3 style="font-size:17px;margin:18px 0 10px">Why the sample scores higher</h3>${cards(sample.analysis)}`
+            : '',
+        ].join('\n')
+      : '',
+    compact
+      ? p(
+          'This message is too long to show everything, so the list of errors and the sample essay are on the website.',
+        )
+      : '',
+  ];
+  const text = [
+    `Hi ${d.name},`,
+    '',
+    `${d.taskTypeLabel} · ${d.topic} · ${d.modeLabel}`,
+    `Overall band: ${formatBand(d.overall)}`,
+    ...d.criteria.map((c) => `${c.label}: ${formatBand(c.score)}`),
+    ...(d.rewriteDue ? ['', `Rewrite required by ${d.rewriteDue}.`] : []),
+    ...(d.generalComment.trim() || d.feedback.some((x) => x.text.trim())
+      ? [
+          '',
+          'FEEDBACK',
+          ...(d.generalComment.trim() ? ['', markdownToPlainText(d.generalComment)] : []),
+        ]
+      : []),
+    ...criterionText(d.feedback),
+    ...(d.body.trim()
+      ? [
+          '',
+          'YOUR ESSAY',
+          'Wrong words are in [brackets]; the correction follows the arrow.',
+          '',
+          correctedEssayText(d.body, placed),
+        ]
+      : []),
+    ...(compact ? [] : ['', `ERRORS (${placed.length})`, ...errorListText(placed)]),
+    ...(sample
+      ? [
+          '',
+          `SAMPLE ESSAY · BAND ${formatBand(sample.band)}`,
+          sample.text.trim(),
+          ...(sample.analysis.some((x) => x.text.trim())
+            ? ['', 'Why the sample scores higher:', ...criterionText(sample.analysis)]
+            : []),
+        ]
+      : []),
+    ...(compact
+      ? [
+          '',
+          'This message is too long to show everything, so the list of errors and the sample essay are on the website.',
+        ]
+      : []),
+  ];
   return layout({
     to: d.to,
     subject: `${d.resent ? 'Updated score' : 'Your score'}: ${d.taskTypeLabel} – Band ${formatBand(d.overall)}`,
-    preheader: `Overall band ${formatBand(d.overall)} for your ${d.taskTypeLabel} essay on ${d.topic}.`,
+    preheader:
+      `Overall band ${formatBand(d.overall)} for your ${d.taskTypeLabel} essay on ${d.topic}. ${markdownToPlainText(d.generalComment).replace(/\s+/g, ' ').slice(0, 100)}`.trim(),
     heading: d.resent ? 'Your essay score was updated' : 'Your essay has been scored',
-    blocks: [
-      p(`Hi ${d.name},`),
-      p(`${d.taskTypeLabel} · ${d.topic} · ${d.modeLabel}`),
-      `<p style="margin:0 0 12px;font-size:28px;font-weight:bold;color:#c2410c">Overall band ${e(formatBand(d.overall))}</p>`,
-      `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:0 0 12px">${rows}</table>`,
-      d.summary ? p(d.summary) : '',
-      errors,
-      rewrite,
-      sampleLine ? p(sampleLine) : '',
-      p('Your full feedback and highlighted essay are on the website.'),
-    ],
-    button: { label: 'View full feedback', url: d.url },
-    text: [
-      `Hi ${d.name},`,
-      '',
-      `${d.taskTypeLabel} · ${d.topic} · ${d.modeLabel}`,
-      `Overall band: ${formatBand(d.overall)}`,
-      ...d.criteria.map((c) => `${c.label}: ${formatBand(c.score)}`),
-      '',
-      d.summary,
-      ...(d.topErrors.length
-        ? [
-            '',
-            'Top errors to fix:',
-            ...d.topErrors.map(
-              (x, i) => `${i + 1}. ${x.category}: "${x.excerpt}" -> ${x.correction}`,
-            ),
-          ]
-        : []),
-      ...(d.rewriteDue ? ['', `Rewrite required by ${d.rewriteDue}.`] : []),
-      ...(sampleLine ? ['', sampleLine] : []),
-    ],
+    blocks,
+    button: { label: 'Open on the website', url: d.url },
+    text,
   });
 }
 

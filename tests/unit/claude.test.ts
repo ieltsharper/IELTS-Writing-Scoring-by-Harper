@@ -336,15 +336,3 @@ describe('Vietnamese comments, English excerpts', () => {
     expect(mail.html).toContain('Bài làm tốt');
   });
 });
-
-describe('email feedback summary', () => {
-  it('removes Markdown but keeps punctuation, hyphens and Vietnamese', async () => {
-    const { summarize } = await import('../../apps-script/src/emailJobs');
-    expect(
-      summarize(
-        '## Nhận xét\n- **Rất tốt!** Dùng từ _well-known_ và `make-up`.\n> [Xem thêm](https://x.y)',
-      ),
-    ).toBe('Nhận xét Rất tốt! Dùng từ well-known và make-up. Xem thêm');
-    expect(summarize('a'.repeat(500)).length).toBe(400);
-  });
-});

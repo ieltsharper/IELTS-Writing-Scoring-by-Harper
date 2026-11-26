@@ -57,14 +57,16 @@ describe('sample essay', () => {
     const seen = app.call('essays.get', { id: essayId }, student).score.sample;
     expect(seen).toEqual({ text: SAMPLE, band: 7.5, analysis: ANALYSIS });
     const mail = app.svc.mail.outbox.at(-1)!;
-    expect(mail.text).toContain('sample essay (Band 7.5)');
+    expect(mail.text).toContain('SAMPLE ESSAY · BAND 7.5');
+    expect(mail.text).toContain('On the one hand, it saves time.');
+    expect(mail.html).toContain('Why the sample scores higher');
   });
 
   it('is optional, and clearing the text removes it', () => {
     const { app, student, admin, essayId, payload } = prepare();
     app.call('admin.saveScore', payload(), admin);
     expect(app.call('essays.get', { id: essayId }, student).score.sample).toBeNull();
-    expect(app.svc.mail.outbox.at(-1)!.text).not.toContain('sample essay');
+    expect(app.svc.mail.outbox.at(-1)!.text).not.toContain('SAMPLE ESSAY');
 
     app.call(
       'admin.saveScore',
@@ -95,7 +97,7 @@ describe('sample essay', () => {
       payload({ sample: { text: SAMPLE, band: 8, analysis: ANALYSIS } }),
       admin,
     );
-    expect(preview.text).toContain('sample essay (Band 8.0)');
+    expect(preview.text).toContain('SAMPLE ESSAY · BAND 8.0');
   });
 });
 

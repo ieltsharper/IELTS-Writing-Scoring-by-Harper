@@ -14,51 +14,15 @@ import { loginJob, resetJob } from './auth';
 import { essayLabel } from './category';
 import { appUrl, type Ctx, type EssayRow } from './context';
 import { type EmailJob, type EmailType, parseEmailKey } from './email';
-import { resultEmail, rewriteReminderBatchEmail, rewriteReminderEmail } from './emailTemplates';
+import {
+  type EmailCriterionText,
+  type EmailError,
+  resultEmail,
+  rewriteReminderBatchEmail,
+  rewriteReminderEmail,
+} from './emailTemplates';
 import type { Row } from './schema';
 import { errorsView, rewriteRequestFor, scoreView } from './views';
-
-/** Plain-text summary of Markdown feedback for the email (full feedback stays behind login). */
-export function summarize(markdownText: string, max = 400): string {
-  // Remove Markdown syntax only, so punctuation such as "!" and hyphenated words survive.
-  const plain = markdownText
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1') // links and images → their text
-    .replace(/^\s{0,3}(?:#{1,6}\s+|>\s?|[-*+]\s+|\d+[.)]\s+)/gm, '') // headings, quotes, list markers
-    .replace(/(\*\*|__|~~)(.+?)\1/g, '$2') // bold, strikethrough
-    .replace(/(^|[^\w*])[*_]([^*_\n]+)[*_](?=[^\w*]|$)/g, '$1$2') // italics
-    .replace(/`([^`]*)`/g, '$1')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return plain.length > max ? `${plain.slice(0, max - 1).trimEnd()}…` : plain;
-}
-
-/** The 3 most frequent error categories in this essay, with one example correction each. */
-export function topErrors(ctx: Ctx, essayId: string, limit = 3) {
-  return groupTopErrors(errorsView(ctx, essayId), limit);
-}
-
-/** Group errors (sorted by position) by category, most frequent first. */
-export function groupTopErrors(
-  errors: Array<{ category: string; excerpt: string; correction: string }>,
-  limit = 3,
-) {
-  const groups = new Map<string, typeof errors>();
-  for (const e of errors) {
-    const list = groups.get(e.category) ?? [];
-    list.push(e);
-    groups.set(e.category, list);
-  }
-  return [...groups.entries()]
-    .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))
-    .slice(0, limit)
-    .map(([category, list]) => ({
-      category,
-      count: list.length,
-      excerpt: list[0].excerpt,
-      correction: list[0].correction,
-    }));
-}
 
 export function resultJob(
   ctx: Ctx,
@@ -83,11 +47,12 @@ export function resultJob(
         criteria: score.criteria,
         overall: score.overall,
         generalComment: score.generalComment,
-        topErrors: topErrors(ctx, essay.id),
+        feedback: score.feedback,
+        errors: errorsView(ctx, essay.id),
         rewriteDueAt:
           rr && (rr.status === 'requested' || rr.status === 'overdue') ? rr.due_at : null,
         resent: type === 'result_resent',
-        sampleBand: score.sample?.band ?? null,
+        sample: score.sample,
       });
     },
   };
@@ -170,13 +135,16 @@ export function resultMessage(
     criteria: Record<Criterion, number>;
     overall: number;
     generalComment: string;
-    topErrors: ReturnType<typeof groupTopErrors>;
+    feedback: Record<Criterion, string>;
+    errors: EmailError[];
     rewriteDueAt: string | null;
     resent: boolean;
-    sampleBand?: number | null;
+    sample?: { text: string; band: number; analysis: Record<Criterion, string> } | null;
   },
 ) {
   const taskType = essay.task_type as TaskType;
+  const labelled = (texts: Record<Criterion, string>): EmailCriterionText[] =>
+    CRITERIA.map((c) => ({ key: c, label: criterionLabel(c, taskType), text: texts[c] ?? '' }));
   return resultEmail({
     to: student.email,
     name: student.name,
@@ -188,11 +156,15 @@ export function resultMessage(
       label: criterionLabel(c, taskType),
       score: data.criteria[c],
     })),
-    summary: summarize(data.generalComment),
-    topErrors: data.topErrors,
+    generalComment: data.generalComment,
+    feedback: labelled(data.feedback),
+    body: essay.body,
+    errors: data.errors,
     rewriteDue: data.rewriteDueAt ? formatForEmail(ctx, data.rewriteDueAt, student.timezone) : null,
     url: appUrl(ctx, `/essays/${essay.id}`),
     resent: data.resent,
-    sampleBand: data.sampleBand ?? null,
+    sample: data.sample
+      ? { text: data.sample.text, band: data.sample.band, analysis: labelled(data.sample.analysis) }
+      : null,
   });
 }

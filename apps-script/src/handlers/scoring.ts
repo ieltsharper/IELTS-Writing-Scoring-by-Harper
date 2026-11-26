@@ -21,7 +21,7 @@ import {
   sendEmail,
   sendEmailBatch,
 } from '../email';
-import { groupTopErrors, jobFromEvent, resultJob, resultMessage } from '../emailJobs';
+import { jobFromEvent, resultJob, resultMessage } from '../emailJobs';
 import type { ActionDef } from '../router';
 import type { Row } from '../schema';
 import { Reader } from '../validate';
@@ -342,7 +342,17 @@ function saveScore(ctx: Ctx, payload: unknown) {
  */
 function previewResult(ctx: Ctx, payload: unknown) {
   const form = readScoreForm(ctx, { ...(payload as object), submit: true });
-  const { essay, scores, category, errors, rewrite, generalComment, notifyAgain, sample } = form;
+  const {
+    essay,
+    scores,
+    category,
+    errors,
+    rewrite,
+    generalComment,
+    feedback,
+    notifyAgain,
+    sample,
+  } = form;
   const student = ctx.db.byId('Users', essay.student_id);
   if (!student) throw new ApiError('not_found', 'Student not found.');
   const overall = overallBand(scores as number[]);
@@ -350,8 +360,7 @@ function previewResult(ctx: Ctx, payload: unknown) {
     Criterion,
     number
   >;
-  const labels = new Map(ctx.db.all('ErrorCategories').map((c) => [c.id, c.label]));
-  const sorted = [...errors].sort((a, b) => (a.start ?? Infinity) - (b.start ?? Infinity));
+  const categories = new Map(ctx.db.all('ErrorCategories').map((c) => [c.id, c]));
   const rr = rewriteRequestFor(ctx, essay.id);
   const rewriteDueAt =
     rewrite.required && (!rr || rr.status !== 'submitted')
@@ -367,16 +376,20 @@ function previewResult(ctx: Ctx, payload: unknown) {
     criteria,
     overall,
     generalComment,
-    topErrors: groupTopErrors(
-      sorted.map((e) => ({
-        category: labels.get(e.categoryId) ?? 'Uncategorised',
-        excerpt: e.excerpt,
-        correction: e.correction,
-      })),
-    ),
+    feedback: feedback as Record<Criterion, string>,
+    errors: errors.map((e, i) => ({
+      id: `preview-${i}`,
+      category: categories.get(e.categoryId)?.label ?? 'Uncategorised',
+      criterion: (categories.get(e.categoryId)?.criterion ?? null) as Criterion | null,
+      excerpt: e.excerpt,
+      start: e.start,
+      end: e.end,
+      correction: e.correction,
+      note: e.note,
+    })),
     rewriteDueAt,
     resent: wasScored,
-    sampleBand: sample ? sample.band : null,
+    sample,
   });
   return {
     to: student.email,
