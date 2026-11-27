@@ -72,7 +72,12 @@ const drive: DriveService = {
 const mail: MailService = {
   remainingQuota: () => MailApp.getRemainingDailyQuota(),
   send: (m) => {
-    GmailApp.sendEmail(m.to || Session.getEffectiveUser().getEmail(), m.subject, m.text, {
+    // BCC batches have no To: use the first ADMIN_EMAIL. Session.getEffectiveUser() would need
+    // the userinfo.email scope, which the manifest does not request (and adding it would force
+    // a fresh authorisation of the whole web app).
+    const to = m.to || (scriptProps().ADMIN_EMAIL ?? '').split(',')[0].trim();
+    if (!to) throw new Error('ADMIN_EMAIL Script Property is not set');
+    GmailApp.sendEmail(to, m.subject, m.text, {
       htmlBody: m.html,
       name: 'IELTS Harper',
       ...(m.bcc?.length ? { bcc: m.bcc.join(',') } : {}),
